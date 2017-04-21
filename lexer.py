@@ -54,51 +54,8 @@ class TokenType(AutoName):
     FloatNum                = auto()
     IntNum                  = auto()
     Identifier              = auto()
+    EOF                     = auto()
 
-
-keyword_tags = {
-    'int':                          TokenType.Int,
-    'long':                         TokenType.Long,
-    'float':                        TokenType.Float,
-    'double':                       TokenType.Double,
-    'char':                         TokenType.Char,
-    'bool':                         TokenType.Bool,
-    'break':                        TokenType.Break,
-    'class':                        TokenType.Class,
-    'else':                         TokenType.Else,
-    'false':                        TokenType.False_,
-    'for':                          TokenType.For,
-    'if':                           TokenType.If,
-    'private':                      TokenType.Private,
-    'protected':                    TokenType.Protected,
-    'public':                       TokenType.Public,
-    'return':                       TokenType.Return,
-    'true':                         TokenType.True_,
-    'void':                         TokenType.Void,
-    'while':                        TokenType.While,
-    '{':                            TokenType.LBracket,
-    '}':                            TokenType.RBracket,
-    '.':                            TokenType.Dot,
-    '==':                           TokenType.Equals,
-    '=':                            TokenType.Assign,
-    '(':                            TokenType.OpenParanthesis,
-    ')':                            TokenType.CloseParanthesis,
-    ';':                            TokenType.SemiColon,
-    ':':                            TokenType.Colon,
-    '+':                            TokenType.Plus,
-    '-':                            TokenType.Minus,
-    '*':                            TokenType.Asterix,
-    '/':                            TokenType.Slash,
-    '<=':                           TokenType.LessOrEqual,
-    '>=':                           TokenType.GreaterOrEqual,
-    '<':                            TokenType.LessThan,
-    '>':                            TokenType.GreaterThan,
-    '!=':                           TokenType.Differs,
-    '||':                           TokenType.Or,
-    '&&':                           TokenType.And,
-    '!':                            TokenType.Not,
-
-}
 
 token_exprs = [
     ('\n',                          TokenType.NewLine),
@@ -151,6 +108,12 @@ token_exprs = [
 ]
 
 
+class Token:
+    def __init__(self, type, value):
+        self.type = type
+        self.value = value
+
+
 def imp_lex(characters):
     return lex(characters, token_exprs)
 
@@ -170,7 +133,7 @@ def lex(characters, token_exprs):
                     break
                 text = match.group(0)
                 if tag:
-                    token = (text, tag)
+                    token = Token(tag, text)
                     tokens.append(token)
                 break
         if not match:
