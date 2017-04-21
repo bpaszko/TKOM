@@ -9,6 +9,7 @@ class AutoName(Enum):
 
 
 class TokenType(AutoName):
+    NewLine                 = auto()
     Int                     = auto()
     Long                    = auto()
     Float                   = auto()
@@ -46,13 +47,63 @@ class TokenType(AutoName):
     GreaterThan             = auto()
     Equals                  = auto()
     Differs                 = auto()
-    Number                  = auto()
+    Or                      = auto()
+    And                     = auto()
+    Not                     = auto()
+    Character               = auto()
+    FloatNum                = auto()
+    IntNum                  = auto()
     Identifier              = auto()
 
 
+keyword_tags = {
+    'int':                          TokenType.Int,
+    'long':                         TokenType.Long,
+    'float':                        TokenType.Float,
+    'double':                       TokenType.Double,
+    'char':                         TokenType.Char,
+    'bool':                         TokenType.Bool,
+    'break':                        TokenType.Break,
+    'class':                        TokenType.Class,
+    'else':                         TokenType.Else,
+    'false':                        TokenType.False_,
+    'for':                          TokenType.For,
+    'if':                           TokenType.If,
+    'private':                      TokenType.Private,
+    'protected':                    TokenType.Protected,
+    'public':                       TokenType.Public,
+    'return':                       TokenType.Return,
+    'true':                         TokenType.True_,
+    'void':                         TokenType.Void,
+    'while':                        TokenType.While,
+    '{':                            TokenType.LBracket,
+    '}':                            TokenType.RBracket,
+    '.':                            TokenType.Dot,
+    '==':                           TokenType.Equals,
+    '=':                            TokenType.Assign,
+    '(':                            TokenType.OpenParanthesis,
+    ')':                            TokenType.CloseParanthesis,
+    ';':                            TokenType.SemiColon,
+    ':':                            TokenType.Colon,
+    '+':                            TokenType.Plus,
+    '-':                            TokenType.Minus,
+    '*':                            TokenType.Asterix,
+    '/':                            TokenType.Slash,
+    '<=':                           TokenType.LessOrEqual,
+    '>=':                           TokenType.GreaterOrEqual,
+    '<':                            TokenType.LessThan,
+    '>':                            TokenType.GreaterThan,
+    '!=':                           TokenType.Differs,
+    '||':                           TokenType.Or,
+    '&&':                           TokenType.And,
+    '!':                            TokenType.Not,
+
+}
+
 token_exprs = [
-    (r'[ \n\t]+',                   None),
-    (r'//[^\n]*',                    None),
+    ('\n',                          TokenType.NewLine),
+    (r'[ \t]+',                     None),
+    (r'//[^\n]*',                   None),
     (r'int',                        TokenType.Int),
     (r'long',                       TokenType.Long),
     (r'float',                      TokenType.Float),
@@ -75,6 +126,7 @@ token_exprs = [
     (r'\{',                         TokenType.LBracket),
     (r'\}',                         TokenType.RBracket),
     (r'\.',                         TokenType.Dot),
+    (r'==',                         TokenType.Equals),
     (r'=',                          TokenType.Assign),
     (r'\(',                         TokenType.OpenParanthesis),
     (r'\)',                         TokenType.CloseParanthesis),
@@ -85,21 +137,26 @@ token_exprs = [
     (r'\*',                         TokenType.Asterix),
     (r'/',                          TokenType.Slash),
     (r'<=',                         TokenType.LessOrEqual),
-    (r'<',                          TokenType.LessThan),
     (r'>=',                         TokenType.GreaterOrEqual),
+    (r'<',                          TokenType.LessThan),
     (r'>',                          TokenType.GreaterThan),
-    (r'==',                         TokenType.Equals),
     (r'!=',                         TokenType.Differs),
-    (r'(\d+(\.\d*)?)',              TokenType.Number),
+    (r'\|\|',                       TokenType.Or),
+    (r'&&',                         TokenType.And),
+    (r'!',                          TokenType.Not),
+    (r'\'((\\t)|.| )\'',            TokenType.Character),
+    (r'(\d+(\.\d*))',               TokenType.FloatNum),
+    (r'(([1-9]\d*)|0)',             TokenType.IntNum),
     (r'[A-Za-z][A-Za-z0-9_]*',      TokenType.Identifier),
-
 ]
+
 
 def imp_lex(characters):
     return lex(characters, token_exprs)
 
 def lex(characters, token_exprs):
     pos = 0
+    line_num = 1
     tokens = []
     while pos < len(characters):
         match = None
@@ -108,17 +165,21 @@ def lex(characters, token_exprs):
             regex = re.compile(pattern)
             match = regex.match(characters, pos)
             if match:
+                if tag == TokenType.NewLine:
+                    line_num += 1
+                    break
                 text = match.group(0)
                 if tag:
-                    token = (text, tag.name)
+                    token = (text, tag)
                     tokens.append(token)
                 break
         if not match:
-            sys.stderr.write('Illegal character: %s\\n' % characters[pos])
+            sys.stderr.write('Illegal character: %s, at line %d\n' % (characters[pos], line_num))
             sys.exit(1)
         else:
             pos = match.end(0)
     return tokens
+
 
 if __name__ == '__main__':
     filename = sys.argv[1]
@@ -127,4 +188,4 @@ if __name__ == '__main__':
     file.close()
     tokens = imp_lex(characters)
     for token in tokens:
-        print(token)
+        print(token[0], "\t-->\t", token[1].name)
