@@ -8,14 +8,14 @@ class Aexp(Equality):
     pass
 
 class IntNum(Aexp):     #IntAexp
-    def __init__(self, i):
-        self.i = int(i)
+    def __init__(self, value):
+        self.value = int(value)
 
     def __eq__(self, other):
-        return self.i == other.i
+        return self.value == other.value
 
     def __repr__(self):
-        return 'IntNum(%s)' % self.i
+        return 'IntNum(%s)' % self.value
 
 
 
@@ -133,7 +133,7 @@ class CompoundStmt(Statement):
 
 
 
-class IfStatement(Statement):
+class IfStmt(Statement):
     def __init__(self, condition, true_stmt, false_stmt):
         self.condition = condition
         self.true_stmt = true_stmt
@@ -147,7 +147,7 @@ class IfStatement(Statement):
 
 
 
-class WhileStatement(Statement):
+class WhileStmt(Statement):
     def __init__(self, condition, body):
         self.condition = condition
         self.body = body
@@ -158,9 +158,12 @@ class WhileStatement(Statement):
     def __repr__(self):
         return 'WhileStmt(%s, %s)' % (self.condition, self.body)
 
-#class ForStatement(Statement):
-#    def __init__(self, condition, body):
-#        ...
+
+class JumpStmt(Statement):
+    pass
+
+class ForStmt(Statement):
+    pass
 
 
 class AssignExp(Statement):

@@ -196,6 +196,8 @@ class TestParser(unittest.TestCase):
 		self.assertEqual(ast, result)
 
 
+
+
 	#TESTING ASSIGNMENT
 	def test_assign_literal(self):
 		code = 'x = 5'
@@ -251,12 +253,404 @@ class TestParser(unittest.TestCase):
 
 		self.assertEqual(ast, result)
 
+
+
+
 	#TESTING DECLARATIONS
+	def test_declare_without_assignment(self):
+		code = 'int x'
+		result = Decl(Param(TypeSpec('int'), Identifier('x')), None)
+
+		parser = createParser(code)
+		ast = parser.parseDecl()
+
+		self.assertEqual(ast, result)
+
+
+	def test_declare_with_literal(self):
+		code = 'int x = 5'
+		result = Decl(Param(TypeSpec('int'), Identifier('x')), IntNum(5))
+
+		parser = createParser(code)
+		ast = parser.parseDecl()
+
+		self.assertEqual(ast, result)
+
+	def test_declare_with_identifier(self):
+		code = 'int x = y'
+		result = Decl(Param(TypeSpec('int'), Identifier('x')), Identifier('y'))
+
+		parser = createParser(code)
+		ast = parser.parseDecl()
+
+		self.assertEqual(ast, result)
+
+	def test_declare_with_aexp(self):
+		code = 'int x = 2 + 4'
+		result = Decl(Param(TypeSpec('int'), Identifier('x')), BinopAexp(IntNum(2), '+', IntNum(4)))
+
+		parser = createParser(code)
+		ast = parser.parseDecl()
+
+		self.assertEqual(ast, result)
+
+	def test_declare_with_aexp_paranthesis(self):
+		code = 'int x = (2 + 4)'
+		result = Decl(Param(TypeSpec('int'), Identifier('x')), BinopAexp(IntNum(2), '+', IntNum(4)))
+
+		parser = createParser(code)
+		ast = parser.parseDecl()
+
+		self.assertEqual(ast, result)
+
+	def test_declare_with_bexp(self):
+		code = 'int x = false || true'
+		result = Decl(Param(TypeSpec('int'), Identifier('x')), OrBexp(BoolLit('false'), BoolLit('true')))
+
+		parser = createParser(code)
+		ast = parser.parseDecl()
+
+		self.assertEqual(ast, result)
+
+	def test_declare_with_bexp_paranthesis(self):
+		code = 'int x = (false && true)'
+		result = Decl(Param(TypeSpec('int'), Identifier('x')), OrBexp(BoolLit('false'), BoolLit('true')))
+
+		parser = createParser(code)
+		ast = parser.parseDecl()
+
+		self.assertEqual(ast, result)
 
 
 
-	#TESTING STATEMENTS
 
+	#TESTING ASSIGN STATEMENTS
+	def test_stmt_assign_literal(self):
+		code = 'x = 5;'
+		result = AssignExp(Identifier('x'), IntNum(5))
+
+		parser = createParser(code)
+		ast = parser.parseStmt()
+
+		self.assertEqual(ast, result)
+
+	def test_stmt_assign_identifier(self):
+		code = 'x = y;'
+		result = AssignExp(Identifier('x'), Identifier('y'))
+
+		parser = createParser(code)
+		ast = parser.parseStmt()
+
+		self.assertEqual(ast, result)
+
+	def test_stmt_assign_aexp(self):
+		code = 'x = 2 + 4;'
+		result = AssignExp(Identifier('x'), BinopAexp(IntNum(2), '+', IntNum(4)))
+
+		parser = createParser(code)
+		ast = parser.parseStmt()
+
+		self.assertEqual(ast, result)
+
+	def test_stmt_assign_aexp_paranthesis(self):
+		code = 'x = (2 + 4);'
+		result = AssignExp(Identifier('x'), BinopAexp(IntNum(2), '+', IntNum(4)))
+
+		parser = createParser(code)
+		ast = parser.parseStmt()
+
+		self.assertEqual(ast, result)
+
+	def test_stmt_assign_bexp(self):
+		code = 'x = false || true;'
+		result = AssignExp(Identifier('x'), OrBexp(BoolLit('false'), BoolLit('true')))
+
+		parser = createParser(code)
+		ast = parser.parseStmt()
+
+		self.assertEqual(ast, result)
+
+	def test_stmt_assign_bexp_paranthesis(self):
+		code = 'x = (false && true);'
+		result = AssignExp(Identifier('x'), OrBexp(BoolLit('false'), BoolLit('true')))
+
+		parser = createParser(code)
+		ast = parser.parseStmt()
+
+		self.assertEqual(ast, result)
+
+
+
+
+	#TEST DECLARATION STATEMENT
+	def test_stmt_declare_without_assignment(self):
+		code = 'int x;'
+		result = Decl(Param(TypeSpec('int'), Identifier('x')), None)
+
+		parser = createParser(code)
+		ast = parser.parseDecl()
+
+		self.assertEqual(ast, result)
+
+
+	def test_stmt_declare_with_literal(self):
+		code = 'int x = 5;'
+		result = Decl(Param(TypeSpec('int'), Identifier('x')), IntNum(5))
+
+		parser = createParser(code)
+		ast = parser.parseDecl()
+
+		self.assertEqual(ast, result)
+
+	def test_stmt_declare_with_identifier(self):
+		code = 'int x = y;'
+		result = Decl(Param(TypeSpec('int'), Identifier('x')), Identifier('y'))
+
+		parser = createParser(code)
+		ast = parser.parseDecl()
+
+		self.assertEqual(ast, result)
+
+	def test_stmt_declare_with_aexp(self):
+		code = 'int x = 2 + 4;'
+		result = Decl(Param(TypeSpec('int'), Identifier('x')), BinopAexp(IntNum(2), '+', IntNum(4)))
+
+		parser = createParser(code)
+		ast = parser.parseDecl()
+
+		self.assertEqual(ast, result)
+
+	def test_stmt_declare_with_aexp_paranthesis(self):
+		code = 'int x = (2 + 4);'
+		result = Decl(Param(TypeSpec('int'), Identifier('x')), BinopAexp(IntNum(2), '+', IntNum(4)))
+
+		parser = createParser(code)
+		ast = parser.parseDecl()
+
+		self.assertEqual(ast, result)
+
+	def test_stmt_declare_with_bexp(self):
+		code = 'int x = false || true;'
+		result = Decl(Param(TypeSpec('int'), Identifier('x')), OrBexp(BoolLit('false'), BoolLit('true')))
+
+		parser = createParser(code)
+		ast = parser.parseDecl()
+
+		self.assertEqual(ast, result)
+
+	def test_stmt_declare_with_bexp_paranthesis(self):
+		code = 'int x = (false && true);'
+		result = Decl(Param(TypeSpec('int'), Identifier('x')), OrBexp(BoolLit('false'), BoolLit('true')))
+
+		parser = createParser(code)
+		ast = parser.parseDecl()
+
+		self.assertEqual(ast, result)
+
+
+	#TEST WHILE LOOP
+	def test_single_line_while_loop(self):
+		code = 'while(x<5)1+1;'
+		result = WhileStmt(RelopBexp(Identifier('x'), '<', IntNum(5)), BinopAexp(IntNum(1), '+', IntNum(1)))
+
+		parser = createParser(code)
+		ast = parser.parseStmt()
+
+		self.assertEqual(ast, result)
+
+	def test_while_loop_boolean_paranthesis(self):
+		code = 'while(((x<5)&&(x!=2)))1+1;'
+		result = WhileStmt(AndBexp(RelopBexp(Identifier('x'), '<', IntNum(5)), RelopBexp(Identifier('x'), \
+			'!=', IntNum(2))), BinopAexp(IntNum(1), '+', IntNum(1)))
+
+		parser = createParser(code)
+		ast = parser.parseStmt()
+
+		self.assertEqual(ast, result)
+
+	def test_compound_while_loop(self):
+		code = 'while(x<2){int k=2;2+2;true&&false;}'
+		result = WhileStmt(RelopBexp(Identifier('x'), '<', IntNum(2)), CompoundStmt([Decl( \
+			Param(TypeSpec('int'), Identifier('k')), IntNum(2)), BinopAexp(IntNum(2), '+', \
+			IntNum(2)), AndBexp(BoolLit('true'), BoolLit('false'))]))
+
+		parser = createParser(code)
+		ast = parser.parseStmt()
+
+		self.assertEqual(ast, result)
+
+	def test_nested_while_loop(self):
+		code = 'while(true)while(x<2)2+2;'
+		result = WhileStmt(BoolLit('true'), WhileStmt(RelopBexp(Identifier('x'), '<', IntNum(2)), \
+			BinopAexp(IntNum(2), '+', IntNum(2))))
+
+		parser = createParser(code)
+		ast = parser.parseStmt()
+
+		self.assertEqual(ast, result)
+
+	def test_while_loop_with_if_else(self):
+		code = 'while(true)if(true)1;else 2;'
+		result = WhileStmt(BoolLit('true'), IfStmt(BoolLit('true'), IntNum(1), IntNum(2)))
+
+		parser = createParser(code)
+		ast = parser.parseStmt()
+
+		self.assertEqual(ast, result)
+
+
+	def test_while_loop_with_continue(self):
+		pass
+
+	def test_while_loop_with_break(self):
+		pass
+
+
+
+	#TEST COMPOUND STMT
+	def test_simple_compound_stmt(self):
+		code = '{2+2;}'
+		result = CompoundStmt([BinopAexp(IntNum(2), '+', IntNum(2))])
+
+		parser = createParser(code)
+		ast = parser.parseStmt()
+
+		self.assertEqual(ast, result)
+
+	def test_compound_stmt_with_while(self):
+		code = '{while(true)1;}'
+		result = CompoundStmt([WhileStmt(BoolLit('true'), IntNum(1))])
+
+		parser = createParser(code)
+		ast = parser.parseStmt()
+
+		self.assertEqual(ast, result)
+
+	def test_compound_stmt_with_if(self):
+		code = '{if(true)1;}'
+		result = CompoundStmt([IfStmt(BoolLit('true'), IntNum(1), None)])
+
+		parser = createParser(code)
+		ast = parser.parseStmt()
+
+		self.assertEqual(ast, result)
+
+	def test_compound_stmt_with_if_else(self):
+		code = '{if(true)1;else 2;}'
+		result = CompoundStmt([IfStmt(BoolLit('true'), IntNum(1), IntNum(2))])
+
+		parser = createParser(code)
+		ast = parser.parseStmt()
+
+		self.assertEqual(ast, result)
+
+
+
+	#TEST SELECTION STATEMENT
+	def test_single_line_if_stmt(self):
+		code = 'if(x<5)1+1;'
+		result = IfStmt(RelopBexp(Identifier('x'), '<', IntNum(5)), BinopAexp(IntNum(1), '+', IntNum(1)), None)
+
+		parser = createParser(code)
+		ast = parser.parseStmt()
+
+		self.assertEqual(ast, result)
+
+	def test_if_stmt_boolean_paranthesis(self):
+		code = 'if(((x<5)&&(x!=2)))1+1;'
+		result = IfStmt(AndBexp(RelopBexp(Identifier('x'), '<', IntNum(5)), RelopBexp(Identifier('x'), \
+			'!=', IntNum(2))), BinopAexp(IntNum(1), '+', IntNum(1)), None)
+
+		parser = createParser(code)
+		ast = parser.parseStmt()
+
+		self.assertEqual(ast, result)
+
+	def test_compound_if_stmt(self):
+		code = 'if(x<2){int k=2;2+2;true&&false;}'
+		result = IfStmt(RelopBexp(Identifier('x'), '<', IntNum(2)), CompoundStmt([Decl(Param(TypeSpec('int'), \
+		 	Identifier('k')), IntNum(2)), BinopAexp(IntNum(2), '+', IntNum(2)), AndBexp(BoolLit('true'), \
+			BoolLit('false'))]), None)
+
+		parser = createParser(code)
+		ast = parser.parseStmt()
+
+		self.assertEqual(ast, result)
+
+	def test_nested_if_stmt(self):
+		code = 'if(true)if(x<2)2+2;'
+		result = IfStmt(BoolLit('true'), IfStmt(RelopBexp(Identifier('x'), '<', IntNum(2)), BinopAexp( \
+			IntNum(2), '+', IntNum(2)), None), None)
+
+		parser = createParser(code)
+		ast = parser.parseStmt()
+
+		self.assertEqual(ast, result)
+
+	def test_if_stmt_with_while_loop(self):
+		code = 'if(true)while(true)1;'
+		result = IfStmt(BoolLit('true'), WhileStmt(BoolLit('true'), IntNum(1)), None)
+
+		parser = createParser(code)
+		ast = parser.parseStmt()
+
+		self.assertEqual(ast, result)
+
+
+
+	#TEST IF ELSE STATEMENT
+	def test_single_line_if_else_stmt(self):
+		code = 'if(x<5)1+1;else 2;'
+		result = IfStmt(RelopBexp(Identifier('x'), '<', IntNum(5)), BinopAexp(IntNum(1), '+', IntNum(1)), \
+			IntNum(2))
+
+		parser = createParser(code)
+		ast = parser.parseStmt()
+
+		self.assertEqual(ast, result)
+
+	def test_if_else_stmt_boolean_paranthesis(self):
+		code = 'if(((x<5)&&(x!=2)))1+1;else 2;'
+		result = IfStmt(AndBexp(RelopBexp(Identifier('x'), '<', IntNum(5)), RelopBexp(Identifier('x'), '!=', \
+			IntNum(2))), BinopAexp(IntNum(1), '+', IntNum(1)), IntNum(2))
+
+		parser = createParser(code)
+		ast = parser.parseStmt()
+
+		self.assertEqual(ast, result)
+
+	def test_compound_if_else_stmt(self):
+		code = 'if(x<2){int k=2;2+2;true&&false;}else{int k=2;2+2;true&&false;}'
+		result = IfStmt(RelopBexp(Identifier('x'), '<', IntNum(2)), CompoundStmt([Decl(Param(TypeSpec('int'), \
+		 	Identifier('k')), IntNum(2)), BinopAexp(IntNum(2), '+', IntNum(2)), AndBexp(BoolLit('true'), \
+			BoolLit('false'))]), CompoundStmt([Decl(Param(TypeSpec('int'), Identifier('k')), IntNum(2)), \
+			BinopAexp(IntNum(2), '+', IntNum(2)), AndBexp(BoolLit('true'), BoolLit('false'))]))
+
+		parser = createParser(code)
+		ast = parser.parseStmt()
+
+		self.assertEqual(ast, result)
+
+	def test_nested_if_else_stmt(self):
+		code = 'if(true)if(x<2)2+2;else 2;else false;'
+		result = IfStmt(BoolLit('true'), IfStmt(RelopBexp(Identifier('x'), '<', IntNum(2)), BinopAexp( \
+			IntNum(2), '+', IntNum(2)), IntNum(2)), BoolLit('false'))
+
+		parser = createParser(code)
+		ast = parser.parseStmt()
+
+		self.assertEqual(ast, result)
+
+	def test_if_else_stmt_with_while_loop(self):
+		code = 'if(true)while(true)1;else while(false)2;'
+		result = IfStmt(BoolLit('true'), WhileStmt(BoolLit('true'), IntNum(1)), WhileStmt(BoolLit('false'),\
+		 IntNum(2)))
+
+
+		parser = createParser(code)
+		ast = parser.parseStmt()
+
+		self.assertEqual(ast, result)
 
 
 if __name__ == '__main__':

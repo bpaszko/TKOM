@@ -1,4 +1,4 @@
-if __name__ == 'main':
+if __name__ == '__main__':
     from my_ast import *
     from lexer import *
 elif __package__:
@@ -28,6 +28,10 @@ class Parser():
         else:
             #self.error()
             raise Exception("Invalid syntax")
+
+    def get_previous_token(self):
+        self.pos -= 1
+        self.current_token = self.tokens[self.pos]
 
     def peekToken(self):
         return self.tokens[self.pos + 1]
@@ -91,6 +95,9 @@ class Parser():
         if token.type == TokenType.OpenParanthesis:
             self.eat(TokenType.OpenParanthesis)
             node = self.parseAExp()
+            if not node:
+                self.get_previous_token()
+                return None
             self.eat(TokenType.CloseParanthesis)
             return node
 
@@ -227,7 +234,7 @@ class Parser():
             self.eat(TokenType.OpenParanthesis)
             boolexp = self.parseBExp()
             self.eat(TokenType.CloseParanthesis)
-            return WhileStatement(condition=boolexp, body=self.parseStmt())
+            return WhileStmt(condition=boolexp, body=self.parseStmt())
 
     #FOR LOOP
     def parseForLoop(self):
@@ -237,29 +244,29 @@ class Parser():
         if self.current_token.type == TokenType.If:
             self.eat(TokenType.If)
             self.eat(TokenType.OpenParanthesis)
-            cond = self.parseCondition()
+            bexp = self.parseBExp()
             self.eat(TokenType.CloseParanthesis)
             true_stmt = self.parseStmt()
             if self.current_token.type == TokenType.Else:
                 self.eat(TokenType.Else)
-                return IfStatement(condition=cond, true_stmt=true_stmt, false_stmt=self.parseStmt())
-            return IfStatement(condition=cond, true_stmt=true_stmt, false_stmt=None)
+                return IfStmt(condition=bexp, true_stmt=true_stmt, false_stmt=self.parseStmt())
+            return IfStmt(condition=bexp, true_stmt=true_stmt, false_stmt=None)
 
     def parseJumpStmt(self):
         if self.current_token.type == TokenType.Break:
             self.eat(TokenType.Break)
             self.eat(TokenType.SemiColon)
-            return JumpStatement() #PARAMS
+            return JumpStmt() #PARAMS
         elif self.current_token.type == TokenType.Continue:
             self.eat(TokenType.Continue)
             self.eat(TokenType.SemiColon)
-            return JumpStatement() #PARAMS
+            return JumpStmt() #PARAMS
         elif self.current_token.type == TokenType.Return:
             self.eat(TokenType.Return)
             if self.current_token.type != TokenType.SemiColon:
                 self.parseReturnable() # IMPLEMENT
             self.eat(TokenType.SemiColon)
-            return JumpStatement() #PARAMS
+            return JumpStmt() #PARAMS
 
 
     #EXPRESSIONS 
@@ -331,6 +338,9 @@ class Parser():
 
 
 
+
+
+
 if __name__ == '__main__':
     if len(sys.argv) != 2:
         sys.stderr.write('usage: %s filename parsername' % sys.argv[0])
@@ -343,5 +353,5 @@ if __name__ == '__main__':
     tokens = lexer.imp_lex(characters)
     #result = imp_parse(tokens)
     parser = Parser(tokens)
-    result = parser.parseExp()
+    result = parser.parseStmt()
     print(result)
