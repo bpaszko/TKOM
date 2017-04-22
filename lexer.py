@@ -18,6 +18,7 @@ class TokenType(AutoName):
     Bool                    = auto()
     Break                   = auto()
     Class                   = auto()
+    Continue                = auto()
     Else                    = auto() 
     False_                  = auto()
     For                     = auto()
@@ -80,6 +81,9 @@ token_exprs = [
     (r'true',                       TokenType.True_),
     (r'void',                       TokenType.Void),
     (r'while',                      TokenType.While),
+    (r'break',                      TokenType.Break),
+    (r'continue',                   TokenType.Continue),
+    (r'return',                     TokenType.Return),
     (r'\{',                         TokenType.LBracket),
     (r'\}',                         TokenType.RBracket),
     (r'\.',                         TokenType.Dot),

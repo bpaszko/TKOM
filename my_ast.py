@@ -102,17 +102,16 @@ class AssignStatement(Statement):
         self.aexp = aexp
 
     def __repr__(self):
-        return 'AssignStmt(=, %s, %s)' % (self.name, self.aexp)
+        return 'AssignStmt(%s, =, %s)' % (self.name, self.aexp)
 
 
 
 class CompoundStatement(Statement):
-    def __init__(self, first, second):
-        self.first = first
-        self.second = second
+    def __init__(self, statements):
+        self.statement = statements
 
     def __repr__(self):
-        return 'CompoundStmt(%s, %s)' % (self.first, self.second)
+        return 'CompoundStmt(%s)' % (self.statements)
 
 
 
@@ -138,3 +137,30 @@ class WhileStatement(Statement):
 #class ForStatement(Statement):
 #    def __init__(self, condition, body):
 #        ...
+
+
+class AssignExp(Statement):
+    def __init__(self, name, aexp):
+        self.name = name
+        self.value = value
+
+    def __repr__(self):
+        return 'AssignExp(%s, =, %s)' % (self.name, self.value)
+
+class Decl():
+    def __init__(self, parameter, init):
+        self.name = name
+        self.value = value
+
+    def __repr__(self):
+        return 'Decl(%s, =, %s)' % (self.name, self.value)
+
+
+class TypeSpec():
+    def __init__(self, value):
+        self.value = value
+
+    def __repr__(self):
+        return 'TypeSpec(%s)' %s (self.value)
+
+
