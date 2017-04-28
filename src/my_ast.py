@@ -19,8 +19,37 @@ class IntNum(Aexp):  # IntAexp
 
 
 class FloatNum(Aexp):
-    def __init__(self, i):
-        self.i = i
+    def __init__(self, value):
+        self.value = float(value)
+
+    def __eq__(self, other):
+        return self.value == other.value
+
+    def __repr__(self):
+        return 'FloatNum(%s)' % self.value
+
+
+class Character:
+    def __init__(self, value):
+        self.value = value[1:2]
+
+    def __eq__(self, other):
+        return self.value == other.value
+
+    def __repr__(self):
+        return 'Char(%s)' % self.value
+
+
+class Id:
+    def __init__(self, parent, child):
+        self.parent = parent
+        self.child = child
+
+    def __eq__(self, other):
+        return self.parent == other.parent and self.child == other.child
+
+    def __repr__(self):
+        return 'Id(%s, %s)' % (self.parent, self.child)
 
 
 class Identifier(Aexp):  # VarAexp
@@ -151,11 +180,30 @@ class WhileStmt(Statement):
 
 
 class JumpStmt(Statement):
-    pass
+    def __init__(self, value, returnable=None):
+        self.value = value
+        self.returnable = returnable
+
+    def __eq__(self, other):
+        return self.value == other.value and self.returnable == other.returnable
+
+    def __repr__(self):
+        return 'JumpStmt(%s, %s)' % (self.value, self.returnable)
 
 
 class ForStmt(Statement):
-    pass
+    def __init__(self, init, condition, increment, body):
+        self.init = init
+        self.condition = condition
+        self.increment = increment
+        self.body = body
+
+    def __eq__(self, other):
+        return self.init == other.init and self.condition == other.condition and \
+            self.increment == other.increment and self.body == other.body
+
+    def __repr__(self):
+        return 'ForStmt(%s, %s, %s, %s)' % (self.init, self.condition, self.increment, self.body)
 
 
 class AssignExp(Statement):
@@ -251,3 +299,14 @@ class AccessMembers:
 
     def __repr__(self):
         return 'AccessMembers(%s, %s)' % (self.access_specifier, self.members_declarations)
+
+class FunCall:
+    def __init__(self, name, args):
+        self.name = name
+        self.args = args
+
+    def __eq__(self, other):
+        return self.name == other.name and self.args == other.args
+
+    def __repr__(self):
+        return 'FunCall(%s, %s)' % (self.name, self.args)

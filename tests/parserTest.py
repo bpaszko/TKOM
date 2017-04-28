@@ -16,6 +16,52 @@ def createParser(code):
 	return parser
 
 class TestParser(unittest.TestCase):
+	def test_float_literal(self):
+		code = '12.44'
+		result = FloatNum(12.44)
+
+		parser = createParser(code)
+		ast = parser.parseLiteral()
+
+		self.assertEqual(ast, result)
+
+	def test_int_literal(self):
+		code = '10'
+		result = IntNum(10)
+
+		parser = createParser(code)
+		ast = parser.parseLiteral()
+
+		self.assertEqual(ast, result)
+
+	def test_char_literal(self):
+		code = "'a'"
+		result = Character("'a'")
+
+		parser = createParser(code)
+		ast = parser.parseLiteral()
+
+		self.assertEqual(ast, result)
+
+	def test_simple_id(self):
+		code = 'var'
+		result = Identifier('var')
+
+		parser = createParser(code)
+		ast = parser.parseId()
+
+		self.assertEqual(ast, result)
+
+	def test_nested_ids(self):
+		code = 'var.nest1.nest2'
+		result = Id(Identifier('var'), Id(Identifier('nest1'), Identifier('nest2')))
+
+		parser = createParser(code)
+		ast = parser.parseId()
+
+		self.assertEqual(ast, result)
+
+	#test arithmetic expressions
 	def test_simple_AEXP(self):
 		code = '2+x'
 		result = BinopAexp(IntNum('2'), '+', Identifier('x'))
@@ -254,7 +300,42 @@ class TestParser(unittest.TestCase):
 		self.assertEqual(ast, result)
 
 
+	#TEST FUNCTION CALL
+	def test_function_call_without_params_from_identifier(self):
+		code = 'var.fun()'
+		result = AssignExp(Identifier('x'), OrBexp(BoolLit('false'), BoolLit('true')))
 
+		parser = createParser(code)
+		ast = parser.parseExp()
+
+		self.assertEqual(ast, result)
+
+	def test_function_call_without_params_from_id(self):
+		code = 'var.var2.fun()'
+		result = AssignExp(Identifier('x'), OrBexp(BoolLit('false'), BoolLit('true')))
+
+		parser = createParser(code)
+		ast = parser.parseExp()
+
+		self.assertEqual(ast, result)
+
+	def test_function_call_with_params_from_identifier(self):
+		code = 'var.fun(k, 2)'
+		result = AssignExp(Identifier('x'), OrBexp(BoolLit('false'), BoolLit('true')))
+
+		parser = createParser(code)
+		ast = parser.parseExp()
+
+		self.assertEqual(ast, result)
+
+	def test_function_call_with_params_from_id(self):
+		code = 'var.var2.fun(k, 2)'
+		result = AssignExp(Identifier('x'), OrBexp(BoolLit('false'), BoolLit('true')))
+
+		parser = createParser(code)
+		ast = parser.parseExp()
+
+		self.assertEqual(ast, result)
 
 	#TESTING DECLARATIONS
 	def test_declare_without_assignment(self):
@@ -500,11 +581,61 @@ class TestParser(unittest.TestCase):
 
 
 	def test_while_loop_with_continue(self):
-		pass
+		code = 'while(true)continue;'
+		result = WhileStmt(BoolLit('true'), JumpStmt('continue'))
+
+		parser = createParser(code)
+		ast = parser.parseStmt()
+
+		self.assertEqual(ast, result)
 
 	def test_while_loop_with_break(self):
-		pass
+		code = 'while(true)break;'
+		result = WhileStmt(BoolLit('true'), JumpStmt('break'))
 
+		parser = createParser(code)
+		ast = parser.parseStmt()
+
+		self.assertEqual(ast, result)
+
+
+
+	#TEST FOR LOOP
+	def test_single_line_for_loop(self):
+		code = 'for(int x=0;x<5;x=x+2)1+1;'
+		result = ForStmt(Decl(Param(TypeSpec('int'), Identifier('x')), IntNum(0)), RelopBexp(Identifier('x'), \
+			'<', IntNum(5)), AssignExp(Identifier('x'), BinopAexp(Identifier('x'), '+', IntNum(2))), \
+			BinopAexp(IntNum(1), '+', IntNum(1)))
+
+		parser = createParser(code)
+		ast = parser.parseStmt()
+
+		self.assertEqual(ast, result)
+
+	def test_compound_for_loop(self):
+		code = 'for(int x=0;x<z;x=x+2){int k=2;2+2;true&&false;}'
+		result = ForStmt(Decl(Param(TypeSpec('int'), Identifier('x')), IntNum(0)), RelopBexp(Identifier('x'), \
+			'<', Identifier('z')), AssignExp(Identifier('x'), BinopAexp(Identifier('x'), '+', IntNum(2))), \
+			CompoundStmt([Decl(Param(TypeSpec('int'), Identifier('k')), IntNum(2)), BinopAexp(IntNum(2), '+', \
+			IntNum(2)), AndBexp(BoolLit('true'), BoolLit('false'))]))
+
+		parser = createParser(code)
+		ast = parser.parseStmt()
+
+		self.assertEqual(ast, result)
+
+	def test_nested_for_loop(self):
+		code = 'for(int x=0;x<5;x=x+2)for(int y=0;y<4;y=y+2)2+2;'
+		result = ForStmt(Decl(Param(TypeSpec('int'), Identifier('x')), IntNum(0)), RelopBexp(\
+			Identifier('x'), '<', IntNum(5)), AssignExp(Identifier('x'), BinopAexp(Identifier('x'), '+', \
+			IntNum(2))), ForStmt(Decl(Param(TypeSpec('int'), Identifier('y')), IntNum(0)), \
+			RelopBexp(Identifier('y'), '<',IntNum(4)), AssignExp(Identifier('y'), BinopAexp( \
+			Identifier('y'), '+', IntNum(2))), BinopAexp(IntNum(2), '+', IntNum(2))))
+
+		parser = createParser(code)
+		ast = parser.parseStmt()
+
+		self.assertEqual(ast, result)
 
 
 	#TEST COMPOUND STMT
@@ -695,7 +826,24 @@ class TestParser(unittest.TestCase):
 
 		self.assertEqual(ast, result)
 
+	def test_function_def_with_void_return(self):
+		code = 'void fun(){return;}'
+		result = FunDef(TypeSpec('void'), Identifier('fun'), [], CompoundStmt([JumpStmt('return', None)]))
 
+		parser = createParser(code)
+		ast = parser.parseFunctionDefinition()
+
+		self.assertEqual(ast, result)
+
+	def test_function_def_with_return(self):
+		code = 'int fun(int a){return a;}'
+		result = FunDef(TypeSpec('int'), Identifier('fun'), [Param(TypeSpec('int'), Identifier('a'))], \
+			CompoundStmt([JumpStmt('return', Identifier('a'))]))
+
+		parser = createParser(code)
+		ast = parser.parseFunctionDefinition()
+
+		self.assertEqual(ast, result)
 
 	#CLASS TESTS
 	def test_empty_class(self):
@@ -769,6 +917,12 @@ class TestParser(unittest.TestCase):
 		ast = parser.parseClassSpecifier()
 
 		self.assertEqual(ast, result)
+
+
+
+	#TESTING WHOLE PROGRAMS 
+
+
 
 
 if __name__ == '__main__':
