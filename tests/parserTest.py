@@ -657,7 +657,7 @@ class TestParser(unittest.TestCase):
 	#FUNCTION DEFINITIONS TESTS
 	def test_function_def_without_params_and_body(self):
 		code = 'int fun(){}'
-		result = FunDef(TypeSpec('int'), Identifier('fun'), [None], CompoundStmt([]))
+		result = FunDef(TypeSpec('int'), Identifier('fun'), [], CompoundStmt([]))
 
 		parser = createParser(code)
 		ast = parser.parseFunctionDefinition()
@@ -666,7 +666,7 @@ class TestParser(unittest.TestCase):
 
 	def test_function_def_without_params_with_body(self):
 		code = 'int fun(){int a = 5;}'
-		result = FunDef(TypeSpec('int'), Identifier('fun'), [None], CompoundStmt([Decl(Param(TypeSpec('int'), \
+		result = FunDef(TypeSpec('int'), Identifier('fun'), [], CompoundStmt([Decl(Param(TypeSpec('int'), \
 			Identifier('a')), IntNum(5))]))
 
 		parser = createParser(code)
@@ -730,7 +730,7 @@ class TestParser(unittest.TestCase):
 	def test_class_same_spec_member_declarations_fun(self):
 		code = 'class X{public:int fun1(){} int fun2(int a){}};'
 		result = Class(Identifier('X'), [AccessMembers('public', [FunDef(TypeSpec('int'), \
-			Identifier('fun1'), [None], CompoundStmt([])), FunDef(TypeSpec('int'), Identifier('fun2'), \
+			Identifier('fun1'), [], CompoundStmt([])), FunDef(TypeSpec('int'), Identifier('fun2'), \
 			[Param(TypeSpec('int'), Identifier('a'))], CompoundStmt([]))])])
 
 		parser = createParser(code)

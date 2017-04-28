@@ -166,37 +166,31 @@ class Parser():
     # STATEMENTS
 
     def parseStmt(self):
+        if self.current_token.type == TokenType.LBracket:
+            return self.parseCompoundStmt()
+        if self.current_token.type in [TokenType.Return, TokenType.Continue, TokenType.Break]:
+            return self.parseJumpStmt()
+        if self.current_token.type == TokenType.While:
+            return self.parseWhileLoop()
+        if self.current_token.type == TokenType.For:
+            self.parseForLoop()
         node = self.parseExpStmt()
         if node:
             return node
         node = self.parseDeclStmt()
         if node:
             return node
-        node = self.parseForLoop()
-        if node:
-            return node
-        node = self.parseWhileLoop()
-        if node:
-            return node
         node = self.parseSelectionStmt()
-        if node:
-            return node
-        node = self.parseCompoundStmt()
-        if node:
-            return node
-        node = self.parseJumpStmt()
         if node:
             return node
 
     def parseCompoundStmt(self):
-        token = self.current_token
-        if token.type == TokenType.LBracket:
-            nodes = []
-            self.eat(TokenType.LBracket)
-            while(self.current_token.type != TokenType.RBracket):
-                nodes.append(self.parseStmt())
-            self.eat(TokenType.RBracket)
-            return CompoundStmt(nodes)
+        nodes = []
+        self.eat(TokenType.LBracket)
+        while(self.current_token.type != TokenType.RBracket):
+            nodes.append(self.parseStmt())
+        self.eat(TokenType.RBracket)
+        return CompoundStmt(nodes)
 
     def parseExpStmt(self):
         node = self.parseExp()
@@ -249,6 +243,17 @@ class Parser():
                 self.parseReturnable()  # IMPLEMENT
             self.eat(TokenType.SemiColon)
             return JumpStmt()  # PARAMS
+
+
+    def parseReturnable():
+        # MORE RETURNABLES!!!
+        if self.current_token.type not in [TokenType.Identifier, TokenType.Int]:
+            raise Exception("EXPECTED RETURNABLE")
+        if self.current_token.type == TokenType.Identifier:
+            return self.parseId()
+        else:
+            return self.parseNumber() #CHANGE PARSE LITERAL
+
 
     # EXPRESSIONS
     def parseExp(self):
@@ -321,7 +326,9 @@ class Parser():
 
     def parseParameterList(self):
         parameters = []
-        while True:
+        while self.current_token.type != TokenType.CloseParanthesis:
+            if self.current_token.value not in type_specifiers:
+                raise Exception("Expected parameter in function def")
             param = self.parseParameter()
             parameters.append(param)
             if self.current_token.type == TokenType.CloseParanthesis:
@@ -408,12 +415,10 @@ class Parser():
                 nodes.append(node)
                 continue
             else:
-                raise Exception("Can't parse program")
+                raise Exception("Can't parse program") #TO REMOVE!!
         return Program(nodes)
 
 
-    #type ident [init] ; - declstmt
-    #type ident ( [params] ) - fundef
 
 if __name__ == '__main__':
     if len(sys.argv) != 2:
