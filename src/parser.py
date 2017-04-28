@@ -10,9 +10,13 @@ comp_operators = ['!=', '==', '>', '<', '>=', '<=']
 
 type_specifiers = ['bool', 'char', 'int', 'long,' 'float', 'double', 'void']
 
+access_specifiers = ['public', 'private', 'protected']
+
+
 class Parser():
     def __init__(self, tokens):
         self.tokens = tokens
+        self.tokens.append(Token(type=TokenType.EOF, value='EOF'))
         self.pos = 0
         self.current_token = tokens[self.pos]
 
@@ -26,17 +30,15 @@ class Parser():
         if self.current_token.type == token_type:
             self.current_token = self.get_next_token()
         else:
-            #self.error()
+            # self.error()
             raise Exception("Invalid syntax")
 
     def get_previous_token(self):
         self.pos -= 1
         self.current_token = self.tokens[self.pos]
 
-    def peekToken(self):
-        return self.tokens[self.pos + 1]
-
-
+    def peek_token(self, offset=1):
+        return self.tokens[self.pos + offset]
 
     def parseNumber(self):
         token = self.current_token
@@ -53,9 +55,6 @@ class Parser():
             self.eat(TokenType.Identifier)
             return Identifier(token.value)
 
-
-
-
     # arithmetic-expression
     def parseAExp(self):
         node = self.parseATerm()
@@ -66,9 +65,9 @@ class Parser():
             elif token.type == TokenType.Minus:
                 self.eat(TokenType.Minus)
 
-            node = BinopAexp(left=node, op=token.value, right=self.parseATerm())
+            node = BinopAexp(left=node, op=token.value,
+                             right=self.parseATerm())
         return node
-
 
     def parseATerm(self):
         node = self.parseAFactor()
@@ -80,9 +79,9 @@ class Parser():
             elif token.type == TokenType.Slash:
                 self.eat(TokenType.Slash)
 
-            node = BinopAexp(left=node, op=token.value, right=self.parseAFactor())
+            node = BinopAexp(left=node, op=token.value,
+                             right=self.parseAFactor())
         return node
-
 
     def parseAFactor(self):
         node = self.parseNumber()
@@ -101,42 +100,35 @@ class Parser():
             self.eat(TokenType.CloseParanthesis)
             return node
 
-
     def aexp(self):
         return self.parseAExp()
 
-
-
-    #BOOLEAN EXPRESSION
+    # BOOLEAN EXPRESSION
     def parseBExp(self):
         node = self.parseBTerm()
         while self.current_token.type == TokenType.Or:
-            token = self.current_token
             self.eat(TokenType.Or)
             node = OrBexp(left=node, right=self.parseBTerm())
         return node
 
-
     def parseBTerm(self):
         node = self.parseBFactor()
         while self.current_token.type == TokenType.And:
-            token = self.current_token
             self.eat(TokenType.And)
             node = AndBexp(left=node, right=self.parseBFactor())
         return node
-
 
     def parseBFactor(self):
         token = self.current_token
         if token.type == TokenType.Not:
             self.eat(TokenType.Not)
             return NotBexp(exp=self.parseBFactor())
-        
+
         elif token.type == TokenType.OpenParanthesis:
             self.eat(TokenType.OpenParanthesis)
             node = self.parseBExp()
             self.eat(TokenType.CloseParanthesis)
-            return node 
+            return node
 
         elif token.type in (TokenType.False_, TokenType.True_):
             if token.type == TokenType.False_:
@@ -148,13 +140,11 @@ class Parser():
         else:
             return self.parseCondition()
 
-
     def parseCondition(self):
         node = self.parseOperand()
-        operator=self.parseComparisionOperator()
+        operator = self.parseComparisionOperator()
         if node and operator:
             return RelopBexp(left=node, op=operator.value, right=self.parseOperand())
-
 
     def parseOperand(self):
         node = self.parseNumber()
@@ -164,46 +154,39 @@ class Parser():
         if node:
             return node
 
-
     def parseComparisionOperator(self):
         token = self.current_token
         if token.value in comp_operators:
             self.eat(token.type)
             return token
 
-
-
     def bexp(self):
         return self.parseBExp()
 
-
-
-
-    #STATEMENTS
+    # STATEMENTS
 
     def parseStmt(self):
         node = self.parseExpStmt()
-        if node: 
+        if node:
             return node
         node = self.parseDeclStmt()
-        if node: 
+        if node:
             return node
         node = self.parseForLoop()
-        if node: 
+        if node:
             return node
         node = self.parseWhileLoop()
-        if node: 
+        if node:
             return node
         node = self.parseSelectionStmt()
-        if node: 
+        if node:
             return node
         node = self.parseCompoundStmt()
-        if node: 
+        if node:
             return node
         node = self.parseJumpStmt()
-        if node: 
+        if node:
             return node
-
 
     def parseCompoundStmt(self):
         token = self.current_token
@@ -213,20 +196,19 @@ class Parser():
             while(self.current_token.type != TokenType.RBracket):
                 nodes.append(self.parseStmt())
             self.eat(TokenType.RBracket)
-            return CompoundStmt(nodes)  ##
-
+            return CompoundStmt(nodes)
 
     def parseExpStmt(self):
         node = self.parseExp()
         if node:
             self.eat(TokenType.SemiColon)
-            return node    #PARAMETRY
+            return node  # PARAMETRY
 
     def parseDeclStmt(self):
         node = self.parseDecl()
         if node:
             self.eat(TokenType.SemiColon)
-            return node   #PARAMETRY
+            return node  # PARAMETRY
 
     def parseWhileLoop(self):
         if self.current_token.type == TokenType.While:
@@ -236,7 +218,7 @@ class Parser():
             self.eat(TokenType.CloseParanthesis)
             return WhileStmt(condition=boolexp, body=self.parseStmt())
 
-    #FOR LOOP
+    # FOR LOOP
     def parseForLoop(self):
         return None
 
@@ -256,20 +238,19 @@ class Parser():
         if self.current_token.type == TokenType.Break:
             self.eat(TokenType.Break)
             self.eat(TokenType.SemiColon)
-            return JumpStmt() #PARAMS
+            return JumpStmt()  # PARAMS
         elif self.current_token.type == TokenType.Continue:
             self.eat(TokenType.Continue)
             self.eat(TokenType.SemiColon)
-            return JumpStmt() #PARAMS
+            return JumpStmt()  # PARAMS
         elif self.current_token.type == TokenType.Return:
             self.eat(TokenType.Return)
             if self.current_token.type != TokenType.SemiColon:
-                self.parseReturnable() # IMPLEMENT
+                self.parseReturnable()  # IMPLEMENT
             self.eat(TokenType.SemiColon)
-            return JumpStmt() #PARAMS
+            return JumpStmt()  # PARAMS
 
-
-    #EXPRESSIONS 
+    # EXPRESSIONS
     def parseExp(self):
         node = self.parseAssignment()
         if node:
@@ -284,9 +265,8 @@ class Parser():
         if node:
             return node
 
-
     def parseAssignment(self):
-        if self.peekToken().type != TokenType.Assign:
+        if self.peek_token().type != TokenType.Assign:
             return
         id = self.parseId()
         init = self.parseInitialization()
@@ -315,7 +295,6 @@ class Parser():
         if node:
             return node
 
-
     def parseDecl(self):
         node = self.parseParameter()
         if node:
@@ -323,23 +302,118 @@ class Parser():
             return Decl(node, init)
 
     def parseParameter(self):
+        node = self.parseTypeSpecifier()
+        if node:
+            return Param(type=node, name=self.parseId())
+
+    def parseTypeSpecifier(self):
         if self.current_token.value in type_specifiers:
             token = self.current_token
             self.eat(token.type)
-            return Param(type=TypeSpec(token.value), name=self.parseId())
-
+            return TypeSpec(token.value)
 
     def parseFunctionCall(self):
         return None
-
 
     def stmt_parse(self):
         return self.parseStmt()
 
 
+    def parseParameterList(self):
+        parameters = []
+        while True:
+            param = self.parseParameter()
+            parameters.append(param)
+            if self.current_token.type == TokenType.CloseParanthesis:
+                break
+            self.eat(TokenType.Comma)
+        return parameters
+
+
+    def parseFunctionDefinition(self):
+        if self.peek_token(2).type != TokenType.OpenParanthesis:
+            return
+        type = self.parseTypeSpecifier()
+        name = self.parseId()
+        self.eat(TokenType.OpenParanthesis)
+        params = self.parseParameterList()
+        self.eat(TokenType.CloseParanthesis)
+        return FunDef(type, name, params, body=self.parseCompoundStmt())
 
 
 
+    def parseMemberDeclaration(self):
+        node = self.parseFunctionDefinition()
+        if not node: 
+            node = self.parseDeclStmt()
+        return node
+
+    def parseMembersDeclarations(self):
+        access_members = []
+        while self.current_token.value not in access_specifiers and \
+          self.current_token.type != TokenType.RBracket:
+            member_declaration = self.parseMemberDeclaration()
+            access_members.append(member_declaration)
+        return access_members
+
+    def parseAccessMembers(self):
+        access_type = self.current_token.value
+        self.eat(self.current_token.type) #PROTECTED, PRIVATE, PUBLIC
+        self.eat(TokenType.Colon)
+        access_members = self.parseMembersDeclarations()
+        return AccessMembers(access_type, access_members)
+
+    def parseMemberSpecification(self):
+        members = []
+        while self.current_token.type != TokenType.RBracket:
+            if self.current_token.value in access_specifiers:
+                part_members = self.parseAccessMembers()
+                members.append(part_members)
+            else:
+                members_decl = self.parseMembersDeclarations()
+                members.append(AccessMembers('private', members_decl))
+        return members
+
+    def parseClassSpecifier(self):
+        self.eat(TokenType.Class)
+        if self.current_token.type != TokenType.Identifier:
+            raise Exception("Expected class name")
+        name = self.parseId() #IDENTIFIER
+        self.eat(TokenType.LBracket)
+        member_spec = self.parseMemberSpecification()
+        self.eat(TokenType.RBracket)
+        self.eat(TokenType.SemiColon)
+        return Class(name, member_spec)
+
+
+
+    def parseDefinition(self):
+        if self.current_token.type == TokenType.Class:
+            node = parseClassSpecifier()
+            return node
+        if self.current_token.value not in type_specifiers:
+            raise Exception('Expected class or type specifier') 
+        node = self.parseFunctionDefinition()
+        if node:
+            return node
+        node = self.parseDeclStmt()
+        if node:
+            return node
+
+    def parseProgram(self):
+        nodes = []
+        while(self.current_token.type != TokenType.EOF):
+            node = self.parseDefinition()
+            if node:
+                nodes.append(node)
+                continue
+            else:
+                raise Exception("Can't parse program")
+        return Program(nodes)
+
+
+    #type ident [init] ; - declstmt
+    #type ident ( [params] ) - fundef
 
 if __name__ == '__main__':
     if len(sys.argv) != 2:
@@ -351,7 +425,6 @@ if __name__ == '__main__':
     file.close()
     lexer = Lexer()
     tokens = lexer.imp_lex(characters)
-    #result = imp_parse(tokens)
     parser = Parser(tokens)
-    result = parser.parseStmt()
+    result = parser.parseClassSpecifier()
     print(result)

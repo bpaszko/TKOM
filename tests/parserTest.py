@@ -653,5 +653,123 @@ class TestParser(unittest.TestCase):
 		self.assertEqual(ast, result)
 
 
+
+	#FUNCTION DEFINITIONS TESTS
+	def test_function_def_without_params_and_body(self):
+		code = 'int fun(){}'
+		result = FunDef(TypeSpec('int'), Identifier('fun'), [None], CompoundStmt([]))
+
+		parser = createParser(code)
+		ast = parser.parseFunctionDefinition()
+
+		self.assertEqual(ast, result)
+
+	def test_function_def_without_params_with_body(self):
+		code = 'int fun(){int a = 5;}'
+		result = FunDef(TypeSpec('int'), Identifier('fun'), [None], CompoundStmt([Decl(Param(TypeSpec('int'), \
+			Identifier('a')), IntNum(5))]))
+
+		parser = createParser(code)
+		ast = parser.parseFunctionDefinition()
+
+		self.assertEqual(ast, result)
+
+	def test_function_def_with_params_without_body(self):
+		code = 'char fun(int a, char b){}'
+		result = FunDef(TypeSpec('char'), Identifier('fun'), [Param(TypeSpec('int'), Identifier('a')), \
+			Param(TypeSpec('char'), Identifier('b'))], CompoundStmt([]))
+
+		parser = createParser(code)
+		ast = parser.parseFunctionDefinition()
+
+		self.assertEqual(ast, result)
+
+	def test_function_def_with_params_and_body(self):
+		code = 'char fun(int a, char b, int k){ a = k + b; }'
+		result = FunDef(TypeSpec('char'), Identifier('fun'), [Param(TypeSpec('int'), Identifier('a')), \
+			Param(TypeSpec('char'), Identifier('b')), Param(TypeSpec('int'), Identifier('k'))], \
+			CompoundStmt([AssignExp(Identifier('a'), BinopAexp(Identifier('k'), '+', Identifier('b')))]))
+
+		parser = createParser(code)
+		ast = parser.parseFunctionDefinition()
+
+		self.assertEqual(ast, result)
+
+
+
+	#CLASS TESTS
+	def test_empty_class(self):
+		code = 'class X{};'
+		result = Class(Identifier('X'), [])
+
+		parser = createParser(code)
+		ast = parser.parseClassSpecifier()
+
+		self.assertEqual(ast, result)
+
+	def test_class_with_empty_access_specs(self):
+		code = 'class X{public:private:protected:public:};'
+		result = Class(Identifier('X'), [AccessMembers('public', []), AccessMembers('private', []), \
+			AccessMembers('protected', []), AccessMembers('public', [])])
+
+		parser = createParser(code)
+		ast = parser.parseClassSpecifier()
+
+		self.assertEqual(ast, result)
+
+	def test_class_same_spec_member_declarations_decl(self):
+		code = 'class X{public:int x = 5; int k;};'
+		result = Class(Identifier('X'), [AccessMembers('public', [Decl(Param(TypeSpec('int'), \
+			Identifier('x')), IntNum(5)), Decl(Param(TypeSpec('int'), Identifier('k')), None)])])
+
+		parser = createParser(code)
+		ast = parser.parseClassSpecifier()
+
+		self.assertEqual(ast, result)
+
+	def test_class_same_spec_member_declarations_fun(self):
+		code = 'class X{public:int fun1(){} int fun2(int a){}};'
+		result = Class(Identifier('X'), [AccessMembers('public', [FunDef(TypeSpec('int'), \
+			Identifier('fun1'), [None], CompoundStmt([])), FunDef(TypeSpec('int'), Identifier('fun2'), \
+			[Param(TypeSpec('int'), Identifier('a'))], CompoundStmt([]))])])
+
+		parser = createParser(code)
+		ast = parser.parseClassSpecifier()
+
+		self.assertEqual(ast, result)
+
+	def test_class_same_spec_member_declarations_both(self):
+		code = 'class X{public:int x = 2; int fun2(int a){}};'
+		result = Class(Identifier('X'), [AccessMembers('public', [Decl(Param(TypeSpec('int'), \
+			Identifier('x')), IntNum(2)), FunDef(TypeSpec('int'), Identifier('fun2'), [Param(TypeSpec('int'), \
+			Identifier('a'))], CompoundStmt([]))])])
+
+		parser = createParser(code)
+		ast = parser.parseClassSpecifier()
+
+		self.assertEqual(ast, result)
+
+	def test_class_different_spec_member_declarations(self):
+		code = 'class X{private:int k; public:int fun2(int a){}};'
+		result = Class(Identifier('X'), [AccessMembers('private', [Decl(Param(TypeSpec('int'), \
+			Identifier('k')), None)]), AccessMembers('public', [FunDef(TypeSpec('int'), \
+			Identifier('fun2'), [Param(TypeSpec('int'), Identifier('a'))], CompoundStmt([]))])])
+
+		parser = createParser(code)
+		ast = parser.parseClassSpecifier()
+
+		self.assertEqual(ast, result)
+
+	def test_class_members_without_access_spec(self):
+		code = 'class X{int k;};'
+		result = Class(Identifier('X'), [AccessMembers('private', [Decl(Param(TypeSpec('int'), \
+			Identifier('k')), None)])])
+
+		parser = createParser(code)
+		ast = parser.parseClassSpecifier()
+
+		self.assertEqual(ast, result)
+
+
 if __name__ == '__main__':
 	unittest.main()
