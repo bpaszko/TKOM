@@ -63,28 +63,26 @@ token_exprs = [
     ('\n', TokenType.NewLine),
     (r'[ \t]+', None),
     (r'//[^\n]*', None),
-    (r'int', TokenType.Int),
-    (r'long', TokenType.Long),
-    (r'float', TokenType.Float),
-    (r'double', TokenType.Double),
-    (r'char', TokenType.Char),
-    (r'bool', TokenType.Bool),
-    (r'break', TokenType.Break),
-    (r'class', TokenType.Class),
-    (r'else', TokenType.Else),
-    (r'false', TokenType.False_),
-    (r'for', TokenType.For),
-    (r'if', TokenType.If),
-    (r'private', TokenType.Private),
-    (r'protected', TokenType.Protected),
-    (r'public', TokenType.Public),
-    (r'return', TokenType.Return),
-    (r'true', TokenType.True_),
-    (r'void', TokenType.Void),
-    (r'while', TokenType.While),
-    (r'break', TokenType.Break),
-    (r'continue', TokenType.Continue),
-    (r'return', TokenType.Return),
+    (r'int(?![A-Za-z\d])', TokenType.Int),
+    (r'long(?![A-Za-z\d])', TokenType.Long),
+    (r'float(?![A-Za-z\d])', TokenType.Float),
+    (r'double(?![A-Za-z\d])', TokenType.Double),
+    (r'char(?![A-Za-z\d])', TokenType.Char),
+    (r'bool(?![A-Za-z\d])', TokenType.Bool),
+    (r'break(?![A-Za-z\d])', TokenType.Break),
+    (r'class(?![A-Za-z\d])', TokenType.Class),
+    (r'continue(?![A-Za-z\d])', TokenType.Continue),
+    (r'else(?![A-Za-z\d])', TokenType.Else),
+    (r'false(?![A-Za-z\d])', TokenType.False_),
+    (r'for(?![A-Za-z\d])', TokenType.For),
+    (r'if(?![A-Za-z\d])', TokenType.If),
+    (r'private(?![A-Za-z\d])', TokenType.Private),
+    (r'protected(?![A-Za-z\d])', TokenType.Protected),
+    (r'public(?![A-Za-z\d])', TokenType.Public),
+    (r'return(?![A-Za-z\d])', TokenType.Return),
+    (r'true(?![A-Za-z\d])', TokenType.True_),
+    (r'void(?![A-Za-z\d])', TokenType.Void),
+    (r'while(?![A-Za-z\d])', TokenType.While),
     (r',', TokenType.Comma),
     (r'\{', TokenType.LBracket),
     (r'\}', TokenType.RBracket),
@@ -110,7 +108,7 @@ token_exprs = [
     (r'\'((\\t)|.| )\'', TokenType.Character),
     (r'(\d+(\.\d*))', TokenType.FloatNum),
     (r'(([1-9]\d*)|0)', TokenType.IntNum),
-    (r'[A-Za-z][A-Za-z0-9_]*', TokenType.Identifier),
+    (r'[A-Za-z_][A-Za-z0-9_]*', TokenType.Identifier),
 ]
 
 
@@ -119,9 +117,25 @@ class Token:
         self.type = type
         self.value = value
 
+    def __eq__(self, other):
+        return self.type == other.type and self.value == other.value
+
+    def __repr__(self):
+        return 'TokenType: %s, value: %s' % (self.type.name, self.value)
+
+
+
+class LexError(Exception):
+    def __init__(self, char, line_num):
+        self.char = char
+        self.line_num = line_num
+
+    def __repr__(self):
+        return 'Illegal character: %s, at line %d\n' % (self.char, self.line_num)
+
 
 class Lexer:
-    def imp_lex(self, characters):
+    def cpp_lex(self, characters):
         return self.lex(characters, token_exprs)
 
     def lex(self, characters, token_exprs):
@@ -144,9 +158,9 @@ class Lexer:
                         tokens.append(token)
                     break
             if not match:
-                sys.stderr.write('Illegal character: %s, at line %d\n' % (
-                    characters[pos], line_num))
-                sys.exit(1)
+                #sys.stderr.write('Illegal character: %s, at line %d\n' % (
+                #    characters[pos], line_num))
+                raise LexError(characters[pos], line_num)
             else:
                 pos = match.end(0)
         return tokens
@@ -158,6 +172,6 @@ if __name__ == '__main__':
     characters = file.read()
     file.close()
     lexer = Lexer()
-    tokens = lexer.imp_lex(characters)
+    tokens = lexer.cpp_lex(characters)
     for token in tokens:
         print(token.value, "\t-->\t", token.type)

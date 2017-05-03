@@ -8,10 +8,11 @@ elif __package__:
 
 comp_operators = ['!=', '==', '>', '<', '>=', '<=']
 
-type_specifiers = ['bool', 'char', 'int', 'long,' 'float', 'double', 'void']
+type_specifiers = ['bool', 'char', 'int', 'long', 'float', 'double', 'void']
 
 access_specifiers = ['public', 'private', 'protected']
 
+literals_types = [TokenType.Character, TokenType.IntNum, TokenType.FloatNum]
 
 class Parser():
     def __init__(self, tokens):
@@ -91,7 +92,6 @@ class Parser():
 
     def parseATerm(self):
         node = self.parseAFactor()
-
         while self.current_token.type in (TokenType.Asterix, TokenType.Slash):
             token = self.current_token
             if token.type == TokenType.Asterix:
@@ -104,21 +104,17 @@ class Parser():
         return node
 
     def parseAFactor(self):
-        node = self.parseLiteral()
-        if node:
-            return node
-        node = self.parseId()
-        if node:
-            return node
+        if self.current_token.type in literals_types:
+            return self.parseLiteral()
+        if self.current_token.type == TokenType.Identifier:
+            return self.parseId()
         token = self.current_token
         if token.type == TokenType.OpenParanthesis:
             self.eat(TokenType.OpenParanthesis)
             node = self.parseAExp()
-            if not node:
-                self.get_previous_token()
-                return None
             self.eat(TokenType.CloseParanthesis)
             return node
+        raise Exception("Can't parse Aexp")
 
     def aexp(self):
         return self.parseAExp()
@@ -166,22 +162,21 @@ class Parser():
     def parseCondition(self):
         node = self.parseOperand()
         operator = self.parseComparisionOperator()
-        if node and operator:
-            return RelopBexp(left=node, op=operator.value, right=self.parseOperand())
+        return RelopBexp(left=node, op=operator.value, right=self.parseOperand())
 
     def parseOperand(self):
-        node = self.parseLiteral()
-        if node:
-            return node
-        node = self.parseId()
-        if node:
-            return node
+        if self.current_token.type == TokenType.Identifier:
+            return self.parseId()
+        if self.current_token.type in literals_types:
+            return self.parseLiteral()
+        raise Exception("Cant parse operand bexp")
 
     def parseComparisionOperator(self):
         token = self.current_token
         if token.value in comp_operators:
             self.eat(token.type)
             return token
+        raise Exception("Expected comp operator bexp")
 
     def bexp(self):
         return self.parseBExp()
@@ -201,9 +196,13 @@ class Parser():
             return self.parseForLoop()
         if self.current_token.type == TokenType.If:
             return self.parseSelectionStmt()
-        if self.current_token.value in type_specifiers:
+        if self.current_token.value in type_specifiers or self.current_token.type == \
+          self.peek_token().type == TokenType.Identifier:
             return self.parseDeclStmt()
-        return self.parseExpStmt()
+        try:
+            return self.parseExpStmt()
+        except:
+            raise Exception("Can't parse statement")
 
     def parseCompoundStmt(self):
         nodes = []
@@ -216,12 +215,12 @@ class Parser():
     def parseExpStmt(self):
         node = self.parseExp()
         self.eat(TokenType.SemiColon)
-        return node  # PARAMETRY
+        return node 
 
     def parseDeclStmt(self):
         node = self.parseDecl()
         self.eat(TokenType.SemiColon)
-        return node  # PARAMETRY
+        return node 
 
     def parseWhileLoop(self):
         self.eat(TokenType.While)
@@ -280,102 +279,141 @@ class Parser():
         if self.current_token.type == TokenType.Break:
             self.eat(TokenType.Break)
             self.eat(TokenType.SemiColon)
-            return JumpStmt('break')  # PARAMS
+            return JumpStmt('break') 
         elif self.current_token.type == TokenType.Continue:
             self.eat(TokenType.Continue)
             self.eat(TokenType.SemiColon)
-            return JumpStmt('continue')  # PARAMS
+            return JumpStmt('continue') 
         elif self.current_token.type == TokenType.Return:
             self.eat(TokenType.Return)
             ret = None
             if self.current_token.type != TokenType.SemiColon:
-                ret = self.parseReturnable()  # IMPLEMENT
+                ret = self.parseReturnable()
             self.eat(TokenType.SemiColon)
-            return JumpStmt('return', ret)  # PARAMS
+            return JumpStmt('return', ret) 
 
 
     def parseReturnable(self):
-        # MORE RETURNABLES!!!
-        if self.current_token.type not in [TokenType.Identifier, TokenType.Int]:
-            raise Exception("EXPECTED RETURNABLE")
         if self.current_token.type == TokenType.Identifier:
             return self.parseId()
-        else:
-            return self.parseLiteral() #CHANGE PARSE LITERAL
+        if self.current_token.type in literals_types:
+            return self.parseLiteral()
+        raise Exception("Expected returnable") 
 
 
 
 
-    # EXPRESSIONS
+    # EXPRESSIONS  - USED ONLY IN EXPSTMTS
     def parseExp(self):
-        node = self.parseAssignment()
-        if node:
-            return node
-        node = self.parseAExp()
-        if node:
-            return node
-        node = self.parseBExp()
-        if node:
-            return node
-        node = self.parseFunctionCall()
-        if node:
-            return node
+        if self.checkIfFunCall():
+            return self.parseFunctionCall()
+        if self.checkIfAssignmentExp():
+            return self.parseAssignment()
+        if self.checkIfAExp():
+            return self.parseAExp()
+        if self.checkIfBExp():
+            return self.parseBExp()
         raise Exception("Expected expression")
 
-    def parseAssignment(self):
-        # CHECK IF id.id.id = 
+    def checkIfNextTokensCorrect(self, begin, allowed, ending):
+        if self.current_token.type not in begin:
+            return False
         i = 1
         next_token = self.peek_token(i)
-        while next_token.type != TokenType.Assign:
-            if next_token.type not in [TokenType.Identifier, TokenType.Dot]:
-                return 
+        while next_token.type not in ending:
+            if next_token.type not in allowed:
+                return False
             i += 1
             next_token = self.peek_token(i)
+        return True
 
+    def checkIfFunCall(self):
+        begin = [TokenType.Identifier]
+        allowed = [TokenType.Identifier, TokenType.Dot]
+        ending = [TokenType.OpenParanthesis]
+        return self.checkIfNextTokensCorrect(begin, allowed, ending)
+
+    def checkIfAssignmentExp(self):
+        begin = [TokenType.Identifier]
+        allowed = [TokenType.Identifier, TokenType.Dot]
+        ending = [TokenType.Assign]
+        return self.checkIfNextTokensCorrect(begin, allowed, ending)
+
+    def checkIfAExp(self):
+        begin = [TokenType.Identifier, TokenType.OpenParanthesis, TokenType.CloseParanthesis,
+            TokenType.Plus, TokenType.Minus, TokenType.Slash, TokenType.Asterix]
+        begin += literals_types
+        allowed = list(begin)
+        allowed.append(TokenType.Dot)
+        ending = [TokenType.SemiColon]
+        return self.checkIfNextTokensCorrect(begin, allowed, ending)
+
+    def checkIfBExp(self):
+        begin = [TokenType.Identifier, TokenType.OpenParanthesis, TokenType.CloseParanthesis,
+            TokenType.And, TokenType.Not, TokenType.Or, TokenType.False_, TokenType.True_]
+        begin += literals_types
+        allowed = list(begin)
+        allowed.append(TokenType.Dot)
+        ending = [TokenType.SemiColon]
+        return self.checkIfNextTokensCorrect(begin, allowed, ending)
+
+    def checkIfId(self):
+        begin = [TokenType.Identifier]
+        allowed = [TokenType.Identifier, TokenType.Dot]
+        ending = [TokenType.SemiColon]
+        return self.checkIfNextTokensCorrect(begin, allowed, ending)
+
+    def checkIfLiteral(self):
+        begin = literals_types
+        allowed = []
+        ending = [TokenType.SemiColon]
+        return self.checkIfNextTokensCorrect(begin, allowed, ending)
+
+    def parseAssignment(self):
         id = self.parseId()
-        init = self.parseInitialization()
-        return AssignExp(id, init)
+        if self.current_token.type == TokenType.Assign:
+            init = self.parseInitialization()
+            return AssignExp(id, init)
+        raise Exception()
 
     def parseInitialization(self):
-        if self.current_token.type == TokenType.Assign:
-            self.eat(TokenType.Assign)
-            return self.parseRValue()
+        self.eat(TokenType.Assign)
+        return self.parseRValue()
 
     def parseRValue(self):
-        node = self.parseAExp()
-        if node:
-            return node
-        node = self.parseBExp()
-        if node:
-            return node
-        node = self.parseFunctionCall()
-        if node:
-            return node
-        node = self.parseId()
-        if node:
-            return node
-        node = self.parseLiteral()
-        if node:
-            return node
+        if self.checkIfFunCall():
+            return self.parseFunctionCall()
+        if self.checkIfId():
+            return self.parseId()
+        if self.checkIfLiteral():
+            return self.parseLiteral()
+        if self.checkIfAExp():
+            return self.parseAExp()
+        if self.checkIfBExp():
+            return self.parseBExp()
+
         raise Exception('Expected r-value')
 
     def parseDecl(self):
         node = self.parseParameter()
-        if node:
+        init = None
+        if self.current_token.type == TokenType.Assign:
             init = self.parseInitialization()
-            return Decl(node, init)
+        return Decl(node, init)
 
     def parseParameter(self):
         node = self.parseTypeSpecifier()
-        if node:
-            return Param(type=node, name=self.parseIdentifier())
+        return Param(type=node, name=self.parseIdentifier())
 
     def parseTypeSpecifier(self):
         if self.current_token.value in type_specifiers:
             token = self.current_token
             self.eat(token.type)
             return TypeSpec(token.value)
-        # ALSO PARSE IDENTIFIER !!!!!!!!!!!!!!!
+        if self.current_token.type == TokenType.Identifier:
+            return self.parseIdentifier()
+        raise Exception("Expected type spec")
+
 
     def parseArgList(self):
         args = []
@@ -389,7 +427,7 @@ class Parser():
             self.eat(TokenType.Comma)
         return args
 
-    def parseFunctionCall(self):
+    def parseFunctionCall(self):    #TODO
         name = self.parseId()
         self.eat(TokenType.OpenParanthesis)
         args = self.parseArgList()
@@ -429,7 +467,7 @@ class Parser():
 
 
 
-    def parseMemberDeclaration(self):
+    def parseMemberDeclaration(self):   #TODO
         node = self.parseFunctionDefinition()
         if not node: 
             node = self.parseDeclStmt()
@@ -476,7 +514,7 @@ class Parser():
 
     def parseDefinition(self):
         if self.current_token.type == TokenType.Class:
-            node = parseClassSpecifier()
+            node = self.parseClassSpecifier()
             return node
         if self.current_token.value not in type_specifiers:
             raise Exception('Expected class or type specifier') 
@@ -509,7 +547,7 @@ if __name__ == '__main__':
     characters = file.read()
     file.close()
     lexer = Lexer()
-    tokens = lexer.imp_lex(characters)
+    tokens = lexer.cpp_lex(characters)
     parser = Parser(tokens)
-    result = parser.parseExp()
+    result = parser.parseProgram()
     print(result)

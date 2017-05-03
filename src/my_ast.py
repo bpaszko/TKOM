@@ -258,7 +258,7 @@ class Program:
         self.definitions = definitions
 
     def __eq__(self, other):
-        self.definitions == other.definitions
+        return self.definitions == other.definitions
 
     def __repr__(self):
         return 'Program(%s)' % (self.definitions)
