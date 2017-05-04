@@ -15,31 +15,22 @@ access_specifiers = ['public', 'private', 'protected']
 literals_types = [TokenType.Character, TokenType.IntNum, TokenType.FloatNum]
 
 class Parser():
-    def __init__(self, tokens):
-        self.tokens = tokens
-        self.tokens.append(Token(type=TokenType.EOF, value='EOF'))
-        self.pos = 0
-        self.current_token = tokens[self.pos]
+    def __init__(self, lexer):
+        self.lexer = lexer
+        self.current_token = self.lexer.get_next_token()
 
     def get_next_token(self):
-        self.pos += 1
-        if self.pos >= len(self.tokens):
-            return Token(TokenType.EOF, None)
-        return self.tokens[self.pos]
+        return self.lexer.get_next_token()
 
     def eat(self, token_type):
         if self.current_token.type == token_type:
             self.current_token = self.get_next_token()
         else:
-            # self.error()
             raise Exception("Invalid syntax")
 
-    def get_previous_token(self):
-        self.pos -= 1
-        self.current_token = self.tokens[self.pos]
 
     def peek_token(self, offset=1):
-        return self.tokens[self.pos + offset]
+        return self.lexer.peek_token(offset-1)
 
 
     def parseLiteral(self):
@@ -543,11 +534,7 @@ if __name__ == '__main__':
         sys.stderr.write('usage: %s filename parsername' % sys.argv[0])
         sys.exit(1)
     filename = sys.argv[1]
-    file = open(filename)
-    characters = file.read()
-    file.close()
-    lexer = Lexer()
-    tokens = lexer.cpp_lex(characters)
-    parser = Parser(tokens)
+    lexer = Lexer(filename)
+    parser = Parser(lexer)
     result = parser.parseProgram()
     print(result)

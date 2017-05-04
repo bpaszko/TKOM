@@ -2,6 +2,7 @@ import unittest
 
 if __name__ == '__main__':
     import sys
+    import io
     from os import path
     sys.path.append( path.dirname( path.dirname( path.abspath(__file__) ) ) )
     from src.parser import *
@@ -10,9 +11,9 @@ if __name__ == '__main__':
 
 
 def createParser(code):
-	lexer = Lexer()
-	tokens = lexer.imp_lex(code)
-	parser = Parser(tokens)
+	stream = io.StringIO(code)
+	lexer = Lexer(stream)
+	parser = Parser(lexer)
 	return parser
 
 class TestParser(unittest.TestCase):

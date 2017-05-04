@@ -1,5 +1,6 @@
 import sys
 import re
+import io
 from enum import Enum, auto
 
 
@@ -9,7 +10,7 @@ class AutoName(Enum):
 
 
 class TokenType(AutoName):
-    NewLine = auto()
+    #NewLine = auto()
     Int = auto()
     Long = auto()
     Float = auto()
@@ -60,7 +61,7 @@ class TokenType(AutoName):
 
 
 token_exprs = [
-    ('\n', TokenType.NewLine),
+    ('\n', None),
     (r'[ \t]+', None),
     (r'//[^\n]*', None),
     (r'int(?![A-Za-z\d])', TokenType.Int),
@@ -135,12 +136,68 @@ class LexError(Exception):
 
 
 class Lexer:
-    def cpp_lex(self, characters):
-        return self.lex(characters, token_exprs)
+    def __init__(self, stream):
+        self.stream = stream
+        self.current_tokens = list()
+        self.relative_position = 0
+        self.current_line = 1
+        self.change_tokens()
 
-    def lex(self, characters, token_exprs):
+
+    def peek_token(self, i):
+        if self.relative_position < len(self.current_tokens):
+            if self.current_tokens[self.relative_position].type == TokenType.EOF or \
+              (self.current_tokens[-1].type == TokenType.EOF and self.relative_position+i >= \
+              len(self.current_tokens)-1):
+                raise Exception
+
+        while self.relative_position + i >= len(self.current_tokens):
+            self.load_more_tokens()
+            if self.relative_position < len(self.current_tokens):
+                if self.current_tokens[self.relative_position].type == TokenType.EOF or \
+                  (self.current_tokens[-1].type == TokenType.EOF and self.relative_position+i >= \
+                  len(self.current_tokens)-1):
+                    raise Exception
+
+        token = self.current_tokens[self.relative_position+i]
+        return token
+
+
+    def get_next_token(self):
+        if self.relative_position < len(self.current_tokens):
+            if self.current_tokens[self.relative_position].type == TokenType.EOF:
+                raise Exception
+
+        while self.relative_position >= len(self.current_tokens):
+            self.change_tokens()
+        token = self.current_tokens[self.relative_position]
+        self.relative_position += 1
+        return token
+        
+
+    def change_tokens(self):
+        next_line = self.stream.readline()
+        if not next_line:
+            self.current_tokens = [Token(TokenType.EOF, 'EOF')]
+            self.relative_position = 0
+            return
+        self.current_tokens = self.lex_line(next_line)
+        self.relative_position = 0
+        self.current_line += 1
+
+
+    def load_more_tokens(self):
+        next_line = self.stream.readline()
+        if not next_line:
+            self.current_tokens += [Token(TokenType.EOF, 'EOF')]
+            return
+        self.current_tokens += self.lex_line(next_line)
+        self.current_line += 1
+
+
+    def lex_line(self, characters):
+        global token_exprs
         pos = 0
-        line_num = 1
         tokens = []
         while pos < len(characters):
             match = None
@@ -149,18 +206,13 @@ class Lexer:
                 regex = re.compile(pattern)
                 match = regex.match(characters, pos)
                 if match:
-                    if tag == TokenType.NewLine:
-                        line_num += 1
-                        break
                     text = match.group(0)
                     if tag:
                         token = Token(tag, text)
                         tokens.append(token)
                     break
             if not match:
-                #sys.stderr.write('Illegal character: %s, at line %d\n' % (
-                #    characters[pos], line_num))
-                raise LexError(characters[pos], line_num)
+                raise LexError(characters[pos], self.current_line)
             else:
                 pos = match.end(0)
         return tokens

@@ -2,14 +2,21 @@ import unittest
 
 if __name__ == '__main__':
     import sys
+    import io
     from os import path
     sys.path.append( path.dirname( path.dirname( path.abspath(__file__) ) ) )
     from src.lexer import *
 
 
 def run_lexer(code):
-	lexer = Lexer()
-	return lexer.cpp_lex(code)
+	stream = io.StringIO(code)
+	lexer = Lexer(stream)
+	tokens = []
+	token = lexer.get_next_token()
+	while token.type != TokenType.EOF:
+		tokens.append(token)
+		token = lexer.get_next_token()
+	return tokens
 
 class TestLexer(unittest.TestCase):
 	def test_keyword_int(self):
