@@ -134,44 +134,48 @@ class LexError(Exception):
     def __repr__(self):
         return 'Illegal character: %s, at line %d\n' % (self.char, self.line_num)
 
+class EndOfInputError(Exception):
+    pass
+
 
 class Lexer:
     def __init__(self, stream):
         self.stream = stream
         self.current_tokens = list()
-        self.relative_position = 0
+        self.pos = 0
         self.current_line = 1
         self.change_tokens()
 
 
     def peek_token(self, i):
-        if self.relative_position < len(self.current_tokens):
-            if self.current_tokens[self.relative_position].type == TokenType.EOF or \
-              (self.current_tokens[-1].type == TokenType.EOF and self.relative_position+i >= \
-              len(self.current_tokens)-1):
-                raise Exception
+        if self.pos < len(self.current_tokens):
+            if self.current_tokens[self.pos-1].type == TokenType.EOF or \
+              (self.current_tokens[-1].type == TokenType.EOF and self.pos+i >= \
+              len(self.current_tokens)):
+                raise EndOfInputError
 
-        while self.relative_position + i >= len(self.current_tokens):
+        while self.pos + i >= len(self.current_tokens):
             self.load_more_tokens()
-            if self.relative_position < len(self.current_tokens):
-                if self.current_tokens[self.relative_position].type == TokenType.EOF or \
-                  (self.current_tokens[-1].type == TokenType.EOF and self.relative_position+i >= \
-                  len(self.current_tokens)-1):
-                    raise Exception
+            if self.pos < len(self.current_tokens):
+                if self.current_tokens[self.pos-1].type == TokenType.EOF or \
+                  (self.current_tokens[-1].type == TokenType.EOF and self.pos+i >= \
+                  len(self.current_tokens)):
+                    print('hi')
+                    raise EndOfInputError
 
-        token = self.current_tokens[self.relative_position+i]
+        token = self.current_tokens[self.pos+i]
         return token
 
 
     def get_next_token(self):
-        if self.relative_position < len(self.current_tokens):
-            if self.current_tokens[self.relative_position].type == TokenType.EOF:
-                raise Exception
+        if self.pos == len(self.current_tokens):
+            if self.current_tokens[self.pos-1].type == TokenType.EOF:
+                raise EndOfInputError
 
-        while self.relative_position >= len(self.current_tokens):
+        while self.pos >= len(self.current_tokens):
             self.change_tokens()
-        token = self.current_tokens[self.relative_position]
-        self.relative_position += 1
+        token = self.current_tokens[self.pos]
+        self.pos += 1
         return token
         
 
@@ -179,10 +183,10 @@ class Lexer:
         next_line = self.stream.readline()
         if not next_line:
             self.current_tokens = [Token(TokenType.EOF, 'EOF')]
-            self.relative_position = 0
+            self.pos = 0
             return
         self.current_tokens = self.lex_line(next_line)
-        self.relative_position = 0
+        self.pos = 0
         self.current_line += 1
 
 
