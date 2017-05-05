@@ -2,12 +2,13 @@
 class Equality:
     pass
 
-
-class Aexp(Equality):
+class Aexp:
     pass
 
+class Literal(Aexp):
+    pass
 
-class IntNum(Aexp):  # IntAexp
+class IntNum(Literal):  # IntAexp
     def __init__(self, value):
         self.value = int(value)
 
@@ -18,7 +19,7 @@ class IntNum(Aexp):  # IntAexp
         return 'IntNum(%s)' % self.value
 
 
-class FloatNum(Aexp):
+class FloatNum(Literal):
     def __init__(self, value):
         self.value = float(value)
 
@@ -29,7 +30,7 @@ class FloatNum(Aexp):
         return 'FloatNum(%s)' % self.value
 
 
-class Character:
+class Character(Literal):
     def __init__(self, value):
         self.value = value[1:2]
 
@@ -52,7 +53,7 @@ class Id:
         return 'Id(%s, %s)' % (self.parent, self.child)
 
 
-class Identifier(Aexp):  # VarAexp
+class Identifier:  # VarAexp
     def __init__(self, name):
         self.name = name
 
@@ -76,7 +77,7 @@ class BinopAexp(Aexp):
         return 'BinopAexp(%s, %s, %s)' % (self.left, self.op, self.right)
 
 
-class Bexp(Equality):
+class Bexp:
     pass
 
 

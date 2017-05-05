@@ -107,7 +107,7 @@ class Parser():
             return self.parseLiteral()
         if self.current_token.type == TokenType.Identifier:
             id_ = self.parseId()
-            self.syntax.check_id(id_)
+            self.syntax.check_if_simple_type(self.syntax.check_id(id_))
             return id_
         token = self.current_token
         if token.type == TokenType.OpenParanthesis:
@@ -167,7 +167,9 @@ class Parser():
 
     def parseOperand(self):
         if self.current_token.type == TokenType.Identifier:
-            return self.parseId()
+            id_ = self.parseId()
+            self.syntax.check_if_simple_type(self.syntax.check_id(id_))
+            return id_
         if self.current_token.type in literals_types:
             return self.parseLiteral()
         raise Exception("Cant parse operand bexp")
@@ -392,7 +394,9 @@ class Parser():
         id = self.parseId()
         if self.current_token.type == TokenType.Assign:
             init = self.parseInitialization()
-            return AssignExp(id, init)
+            node = AssignExp(id, init)
+            self.syntax.check_assignment(node)
+            return node
         raise Exception()
 
     def parseInitialization(self):

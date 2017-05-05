@@ -144,15 +144,107 @@ class Syntax:
 			#BOTH IDENTIFIERS
 			if isinstance(arg, Identifier) or isinstance(arg, Id):
 				arg_decl = self.check_id(arg)
-				#CHECK IF NOT FUN OR CLASS TODO
+				#CHECK IF NOT FUN OR CLASS
+				if arg_decl.type_ != EntityType.Var:
+					raise Exception('Non-variable argument')
 				arg_type = arg_decl.struct.type_
-				if isinstance(arg_type, Identifier) and arg_type != param.struct.type_:
+				param_type = param.struct.type_
+				if not isinstance(param_type, Identifier) \
+				  or (isinstance(arg_type, Identifier) and arg_type != param_type):
 					raise Exception('Invalid argument')
 			#ARG IS LITERAL
 			else:
 				if isinstance(param.struct.type_, Identifier):
 					raise Exception('Invalid argument')	
 
+	def check_if_simple_type(self, var):
+		if not self.check_syntax:
+			return
+		if var.type_ != EntityType.Var:
+			raise Exception('Variable required')
+		#CHECK IF VAR NOT FUN OR CLASS TODOOO
+		type_ = var.struct.type_
+		if isinstance(type_, Identifier):
+			raise Exception('Incompatibile types in aexp')
+
+	def check_assignment(self, assign):
+		if not self.check_syntax:
+			return
+		id_, value = assign.name, assign.value
+		var = self.check_id(id_)
+		if var.type_ != EntityType.Var:
+			raise Exception('L-value in assignment must be variable')
+		l_type = var.struct.type_
+		r_type = self.get_r_value_type(value)
+		self.compare_types(l_type, r_type)
+
+	def get_r_value_type(self, value):
+		if isinstance(value, Aexp):
+			return TypeSpec('aexp') #TODO
+		if isinstance(value, Bexp):
+			return TypeSpec('bool')
+		if type(value) in [Id, Identifier]:
+			var = self.check_id(value)
+			if var.type_ != EntityType.Var:
+				raise Exception('Not a variable')
+			type_ = var.struct.type_
+			return type_
+		if isinstance(value, FunCall):
+			name = value.name
+			fun = self.check_id(name)
+			if fun.type_ != EntityType.Fun:
+				raise Exception('Not callable')
+			type_ = fun.struct.type_
+			print(fun, type_)
+			return type_
+		raise Exception('Unknown Type')
+
+	def compare_types(self, l_val, r_val):
+		if isinstance(l_val, TypeSpec):
+			if l_val == TypeSpec('bool'):
+				if not isinstance(r_val, TypeSpec) or r_val != TypeSpec('bool'):
+					raise Exception('Assign type mismatch')
+			if not isinstance(r_val, TypeSpec):
+				raise Exception('Assign type mismatch')
+		else:
+			if not isinstance(r_val, Identifier) or l_val != r_val:
+				raise Exception('Assign type mismatch')		
+
+
+	#AFTER LEAVING
+	#L_VAL = IDENTIFIER!
+	def add_declaration(self, decl, member=False):
+		if not self.check_syntax:
+			return
+		parameter, value = decl.parameter, decl.value
+		type_spec, id_ = parameter.type, parameter.name
+		name = id_.name
+		#type_spec id_ = value
+
+		#OBJECT
+		if isinstance(type_spec, Identifier):
+			#INIT PROHIBITED
+			#check if class exist
+			if not self.global_env.find_local(type_spec.name):
+				raise Exception()
+
+			if value:
+				raise Exception('Initializing object')
+
+		#SIMPLE TYPE
+		else:
+			#CHECK IF PROPER TYPE ASSIGNED
+			if value:
+				l_type = type_spec
+				r_type = self.get_r_value_type(value)
+				self.compare_types(l_type, r_type)
+
+		class_ = None	
+
+		if member:
+			class_ = self.current_env.name
+		var = VariableStruct(type_spec, class_)
+		self.current_env.dict[name] = Entity(EntityType.Var, var)
 
 	#after leaving fun_env
 	def add_function_definition(self, fun_def):
@@ -195,77 +287,4 @@ class Syntax:
 		var = VariableStruct(type_spec, None)
 		self.current_env.dict[name] = Entity(EntityType.Var, var)
 
-	#AFTER LEAVING
-	#L_VAL = IDENTIFIER!
-	def add_declaration(self, decl, member=False):
-		if not self.check_syntax:
-			return
-		parameter, value = decl.parameter, decl.value
-		type_spec, id_ = parameter.type, parameter.name
-		name = id_.name
-		#type_spec id_ = value
 
-		#OBJECT
-		if isinstance(type_spec, Identifier):
-			#INIT PROHIBITED
-			#check if class exist
-			if not self.global_env.find_local(type_spec.name):
-				raise Exception()
-
-			if value:
-				raise Exception()
-
-		#SIMPLE TYPE
-		else:
-			#CHECK IF PROPER TYPE ASSIGNED
-		#	if value:
-		#		if not self.compare_types(type_spec, value): #IMPLEMENT
-		#			raise Exception()
-			pass
-
-		class_ = None	
-
-		if member:
-			class_ = self.current_env.name
-		var = VariableStruct(type_spec, class_)
-		self.current_env.dict[name] = Entity(EntityType.Var, var)
-
-"""
-    def check_aexp(self):
-    	if isin
-
-    #return type
-    def check_r_val(val):
-    	type_ = None
-    	if isinstance(val, FunCall) or isinstance(val, Id) or isinstance(val, Identifier):
-    		type_ = self.current_env.check_id(val)
-    	elif isinstance(val, IntNum) or isinstance(val, FloatNum) or isinstance(val, Character):
-    		type_ = TypeSpec(val)
-    	elif isinstance(val, BinopAexp):
-    		type_ = self.check_aexp(val)
-    	else:
-    		type_ = self.check_bexp(val)
-    	return type_
-
-
-    def check_assign(self, assign):
-        if not self.check_syntax:
-            return
-        #name = value
-        id_, value = assign.name, assign.value
-        ident = id_
-        if isinstance(id_, Id):
-        	ident = id_.parent
-        name = ident.name
-        var = self.current_env.find(name)
-        #NOT DECLARED BEFORE
-        if not var:
-            raise Exception()
-        #BAD TYPES
-        #var[type]
-        if not self.compare_types(var[0], value):
-            raise Exception()
-
-        l_val = self.current_env.check_id(id_)
-        r_val = self.current_env.check_r_val(value)
-"""
