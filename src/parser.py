@@ -1,11 +1,11 @@
 if __name__ == '__main__':
     from my_ast import *
     from lexer import *
-    from syntax import *
+    from semantic import *
 elif __package__:
     from .my_ast import *
     from .lexer import *
-    from .syntax import *
+    from .semantic import *
 
 
 comp_operators = ['!=', '==', '>', '<', '>=', '<=']
@@ -18,13 +18,13 @@ literals_types = [TokenType.Character, TokenType.IntNum, TokenType.FloatNum]
 
 
 class Parser():
-    def __init__(self, lexer, syntax=None):
+    def __init__(self, lexer, semantic=None):
         self.lexer = lexer
         self.current_token = self.lexer.get_next_token()
-        if syntax:
-            self.syntax = syntax
+        if semantic:
+            self.semantic = semantic
         else:
-            self.syntax = Syntax(check=False)
+            self.semantic = Semantic(check=False)
 
     def get_next_token(self):
         return self.lexer.get_next_token()
@@ -107,7 +107,7 @@ class Parser():
             return self.parseLiteral()
         if self.current_token.type == TokenType.Identifier:
             id_ = self.parseId()
-            self.syntax.check_if_simple_type(self.syntax.check_id(id_))
+            self.semantic.check_if_simple_type(self.semantic.check_id(id_))
             return id_
         token = self.current_token
         if token.type == TokenType.OpenParanthesis:
@@ -168,7 +168,7 @@ class Parser():
     def parseOperand(self):
         if self.current_token.type == TokenType.Identifier:
             id_ = self.parseId()
-            self.syntax.check_if_simple_type(self.syntax.check_id(id_))
+            self.semantic.check_if_simple_type(self.semantic.check_id(id_))
             return id_
         if self.current_token.type in literals_types:
             return self.parseLiteral()
@@ -202,7 +202,7 @@ class Parser():
         if self.current_token.value in type_specifiers or self.current_token.type == \
           self.peek_token().type == TokenType.Identifier:
             decl = self.parseDeclStmt()
-            self.syntax.add_declaration(decl)
+            self.semantic.add_declaration(decl)
             return decl
         #try:
         return self.parseExpStmt()
@@ -210,13 +210,13 @@ class Parser():
         #    raise Exception("Can't parse statement")
 
     def parseCompoundStmt(self):
-        self.syntax.set_new_env()
+        self.semantic.set_new_env(env_type=EnvType.Compound)
         nodes = []
         self.eat(TokenType.LBracket)
         while(self.current_token.type != TokenType.RBracket):
             nodes.append(self.parseStmt())
         self.eat(TokenType.RBracket)
-        self.syntax.previous_env()
+        self.semantic.previous_env()
         return CompoundStmt(nodes)
 
     def parseExpStmt(self):
@@ -230,13 +230,13 @@ class Parser():
         return node 
 
     def parseWhileLoop(self):
-        self.syntax.set_new_env()
+        self.semantic.set_new_env(env_type=EnvType.Loop)
         self.eat(TokenType.While)
         self.eat(TokenType.OpenParanthesis)
         boolexp = self.parseBExp()
         self.eat(TokenType.CloseParanthesis)
         body = self.parseStmt()
-        self.syntax.previous_env()
+        self.semantic.previous_env()
         return WhileStmt(condition=boolexp, body=body)
 
     #FOR LOOP
@@ -244,52 +244,61 @@ class Parser():
     def parseForInit(self):
         node = self.parseParameter()
         init = self.parseInitialization()
+        decl = Decl(node, init)
+        self.semantic.add_declaration(decl)
         return Decl(node, init)
 
     #return relopbexp
-    def parseConditionLessThan(self):
+    def parseConditionLessThan(self, decl):
         left = self.parseIdentifier()  
+        node = None
         self.eat(TokenType.LessThan)
         if self.current_token.type == TokenType.Identifier:
-            return RelopBexp(left=left, op='<', right=self.parseIdentifier())
-        return RelopBexp(left=left, op='<', right=self.parseLiteral())
+            node = RelopBexp(left=left, op='<', right=self.parseIdentifier())
+            self.semantic.check_id(node)
+        else:
+            node = RelopBexp(left=left, op='<', right=self.parseLiteral())
+        self.semantic.check_for_condition(node, decl)
+        return node
 
     #return Assign(id = Binopaexp(id + int)))
-    def parseIncrement(self):
+    def parseIncrement(self, decl):
         left = self.parseIdentifier()
         self.eat(TokenType.Assign)
         first = self.parseIdentifier()
         self.eat(TokenType.Plus)
         second = self.parseLiteral()
-        return AssignExp(name=left, value=BinopAexp(left=first, op='+', right=second))
+        node = AssignExp(name=left, value=BinopAexp(left=first, op='+', right=second))
+        self.semantic.check_for_increment(node, decl)
+        return node
 
     def parseForLoop(self):
-        self.syntax.set_new_env()
+        self.semantic.set_new_env(env_type=EnvType.Loop)
         self.eat(TokenType.For)
         self.eat(TokenType.OpenParanthesis)
         init = self.parseForInit()
         self.eat(TokenType.SemiColon)
-        cond = self.parseConditionLessThan()
+        cond = self.parseConditionLessThan(init)
         self.eat(TokenType.SemiColon)
-        inc = self.parseIncrement()
+        inc = self.parseIncrement(init)
         self.eat(TokenType.CloseParanthesis)
         body = self.parseStmt()
-        self.syntax.previous_env()
+        self.semantic.previous_env()
         return ForStmt(init=init, condition=cond, increment=inc, body=body)
 
     def parseSelectionStmt(self):
-        self.syntax.set_new_env()
+        self.semantic.set_new_env(env_type=EnvType.If)
         self.eat(TokenType.If)
         self.eat(TokenType.OpenParanthesis)
         bexp = self.parseBExp()
         self.eat(TokenType.CloseParanthesis)
         true_stmt = self.parseStmt()
-        self.syntax.previous_env()
+        self.semantic.previous_env()
         if self.current_token.type == TokenType.Else:
-            self.syntax.set_new_env()
+            self.semantic.set_new_env(env_type=EnvType.Else)
             self.eat(TokenType.Else)
             false_stmt = self.parseStmt()
-            self.syntax.previous_env()
+            self.semantic.previous_env()
             return IfStmt(condition=bexp, true_stmt=true_stmt, false_stmt=false_stmt)
         return IfStmt(condition=bexp, true_stmt=true_stmt, false_stmt=None)
 
@@ -297,10 +306,12 @@ class Parser():
         if self.current_token.type == TokenType.Break:
             self.eat(TokenType.Break)
             self.eat(TokenType.SemiColon)
+            self.semantic.check_if_inside_loop()
             return JumpStmt('break') 
         elif self.current_token.type == TokenType.Continue:
             self.eat(TokenType.Continue)
             self.eat(TokenType.SemiColon)
+            self.semantic.check_if_inside_loop()
             return JumpStmt('continue') 
         elif self.current_token.type == TokenType.Return:
             self.eat(TokenType.Return)
@@ -308,7 +319,9 @@ class Parser():
             if self.current_token.type != TokenType.SemiColon:
                 ret = self.parseReturnable()
             self.eat(TokenType.SemiColon)
-            return JumpStmt('return', ret) 
+            node = JumpStmt('return', ret)
+            self.semantic.check_return(node)
+            return node 
 
 
     def parseReturnable(self):
@@ -361,20 +374,22 @@ class Parser():
         return self.checkIfNextTokensCorrect(begin, allowed, ending)
 
     def checkIfAExp(self):
-        begin = [TokenType.Identifier, TokenType.OpenParanthesis, TokenType.CloseParanthesis,
-            TokenType.Plus, TokenType.Minus, TokenType.Slash, TokenType.Asterix]
+        begin = [TokenType.Identifier, TokenType.OpenParanthesis]
         begin += literals_types
         allowed = list(begin)
-        allowed.append(TokenType.Dot)
+        allowed += [TokenType.CloseParanthesis, TokenType.Plus, TokenType.Minus, 
+            TokenType.Slash, TokenType.Asterix, TokenType.Dot]
         ending = [TokenType.SemiColon]
         return self.checkIfNextTokensCorrect(begin, allowed, ending)
 
     def checkIfBExp(self):
-        begin = [TokenType.Identifier, TokenType.OpenParanthesis, TokenType.CloseParanthesis,
-            TokenType.And, TokenType.Not, TokenType.Or, TokenType.False_, TokenType.True_]
+        begin = [TokenType.Identifier, TokenType.OpenParanthesis,
+            TokenType.Not, TokenType.False_, TokenType.True_]
         begin += literals_types
         allowed = list(begin)
-        allowed.append(TokenType.Dot)
+        allowed += [TokenType.And, TokenType.CloseParanthesis, TokenType.Or, TokenType.LessOrEqual,
+            TokenType.Equals, TokenType.Differs, TokenType.GreaterOrEqual, TokenType.GreaterThan,
+            TokenType.LessThan, TokenType.Dot]
         ending = [TokenType.SemiColon]
         return self.checkIfNextTokensCorrect(begin, allowed, ending)
 
@@ -395,7 +410,7 @@ class Parser():
         if self.current_token.type == TokenType.Assign:
             init = self.parseInitialization()
             node = AssignExp(id, init)
-            self.syntax.check_assignment(node)
+            self.semantic.check_assignment(node)
             return node
         raise Exception()
 
@@ -419,7 +434,7 @@ class Parser():
 
     def parseDecl(self):
         node = self.parseParameter()
-        self.syntax.check_parameter(node)
+        self.semantic.check_parameter(node)
         init = None
         if self.current_token.type == TokenType.Assign:
             init = self.parseInitialization()
@@ -458,7 +473,7 @@ class Parser():
         args = self.parseArgList()
         self.eat(TokenType.CloseParanthesis)
         node = FunCall(name, args)
-        self.syntax.check_funcall(node)
+        self.semantic.check_funcall(node)
         return node
 
 
@@ -476,7 +491,7 @@ class Parser():
               self.current_token.type != TokenType.Identifier:
                 raise Exception("Expected parameter in function def")
             param = self.parseParameter()
-            self.syntax.check_parameter(param)
+            self.semantic.check_parameter(param)
             parameters.append(param)
             if self.current_token.type == TokenType.CloseParanthesis:
                 break
@@ -484,16 +499,16 @@ class Parser():
         return parameters
 
     def parseFunctionDefinition(self):
-        self.syntax.set_new_env()
-        type = self.parseTypeSpecifier()
+        self.semantic.set_new_env(env_type=EnvType.Fun)
+        type_ = self.parseTypeSpecifier()
         name = self.parseIdentifier()
-        self.syntax.check_identifier(name)
+        self.semantic.check_fun_identifier(name)
         self.eat(TokenType.OpenParanthesis)
         params = self.parseParameterList()
+        self.semantic.add_function_definition(type_, name)
         self.eat(TokenType.CloseParanthesis)
-        node = FunDef(type, name, params, body=self.parseCompoundStmt())
-        #self.syntax.check_function_definition(node)
-        self.syntax.previous_env()
+        node = FunDef(type_, name, params, body=self.parseCompoundStmt())
+        self.semantic.previous_env()
         return node
 
     def parseMemberDeclaration(self):
@@ -505,11 +520,9 @@ class Parser():
             pass
         else:
             if res:
-                fun_def = self.parseFunctionDefinition()
-                self.syntax.add_function_definition(fun_def)
-                return fun_def
+                return self.parseFunctionDefinition()
         decl = self.parseDeclStmt()
-        self.syntax.add_declaration(decl, True)
+        self.semantic.add_declaration(decl, True)
         return decl
 
     def parseMembersDeclarations(self):
@@ -539,20 +552,20 @@ class Parser():
         return members
 
     def parseClassSpecifier(self):
-        self.syntax.set_new_env()
+        self.semantic.set_new_env(env_type=EnvType.Class)
         self.eat(TokenType.Class)
         if self.current_token.type != TokenType.Identifier:
             raise Exception("Expected class name")
         name = self.parseIdentifier()
-        self.syntax.check_if_declared_variable(name)
-        self.syntax.name_env(name)
+        self.semantic.check_identifier(name)
+        self.semantic.add_class(name)
+        self.semantic.name_env(name)
         self.eat(TokenType.LBracket)
         member_spec = self.parseMemberSpecification()
         self.eat(TokenType.RBracket)
         self.eat(TokenType.SemiColon)
         class_ = Class(name, member_spec)
-        self.syntax.add_class(class_)
-        self.syntax.previous_env()
+        self.semantic.previous_env()
         return class_
 
     def parseDefinition(self):
@@ -568,12 +581,13 @@ class Parser():
             pass
         else:
             if res:
-                fun_def = self.parseFunctionDefinition()
-                self.syntax.add_function_definition(fun_def)
-                return fun_def
+                #fun_def = self.parseFunctionDefinition()
+                #self.semantic.add_function_definition(fun_def)
+                #return fun_def
+                return self.parseFunctionDefinition()
 
         decl = self.parseDeclStmt()
-        self.syntax.add_declaration(decl)
+        self.semantic.add_declaration(decl)
         return decl
 
     def parseProgram(self):
@@ -588,11 +602,11 @@ class Parser():
         return Program(nodes)
 
 
-def print_env(env):
-    print(env)
+def print_env(env, tb=0):
+    print(tb*'\t' + str(env))
     if env.childs:
         for i in env.childs:
-            print_env(i)
+            print_env(i, tb+1)
 
 if __name__ == '__main__':
     if len(sys.argv) != 2:
@@ -603,9 +617,9 @@ if __name__ == '__main__':
     with open(filename, 'r') as f:
         stream = io.StringIO(f.read())
     lexer = Lexer(stream)
-    syntax = Syntax(True)
-    parser = Parser(lexer, syntax)
+    semantic = Semantic(True)
+    parser = Parser(lexer, semantic)
     result = parser.parseProgram()
     print(result)
     print('\n\n')
-    print_env(parser.syntax.global_env)
+    print_env(parser.semantic.global_env)

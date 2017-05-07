@@ -2,91 +2,25 @@ if __name__ == '__main__':
     from my_ast import *
 elif __package__:
     from .my_ast import *
+    from .my_env import *
+    from .semantic_errors import *
 else:
 	from my_ast import *
-
-from enum import Enum, auto
-
-class NotDeclaredError(Exception):
-	pass
-
-class AlreadyDeclaredError(Exception):
-	pass
+	from my_env import *
+	from semantic_errors import *
 
 
-class EntityType(Enum):
-	Fun = auto()
-	Var = auto()
-	Class = auto()
-
-
-class Entity:
-	def __init__(self, type_, struct):
-		self.type_ = type_
-		self.struct = struct
-
-	def __repr__(self):
-		return '%s, [%s]' % (self.type_.name, self.struct)
-
-class VariableStruct:
-	def __init__(self, type_, class_):
-		self.type_ = type_
-		self.class_ = class_
-
-	def __repr__(self):	
-		return '%s, %s' % (self.type_, self.class_) if self.class_ \
-			else '%s' % self.type_
-
-class FunctionStruct:
-	def __init__(self, type_, class_, env):
-		self.type_ = type_
-		self.class_ = class_
-		self.env = env #USED TO CHECK ARGS
-
-	def __repr__(self):
-		return '%s, %s, %s' % (self.type_, self.class_, self.env) if self.class_ \
-			else '%s, %s' % (self.type_, self.env)
-
-class ClassStruct:
-	def __init__(self, env):
-		self.env = env
-
-	def __repr__(self):
-		return ''
-
-class Env:
-	def __init__(self, parent=None, name=None,):
-		self.name = name
-		self.parent = parent
-		self.dict = {}
-		self.childs = list()
-
-	def find_local(self, name):
-		if name in self.dict.keys():
-			return self.dict[name]
-
-	def find(self, name):
-		var = self.find_local(name)
-		if var:
-			return var
-		if self.parent:
-			return self.parent.find(name)
-
-	def __repr__(self):
-		return 'env %s: %s' % (self.name, self.dict) if self.name else \
-			'env: %s' % self.dict
-
-    
 type_specifiers = ['bool', 'char', 'int', 'long', 'float', 'double', 'void']
 
-class Syntax:
+
+class Semantic:
 	def __init__(self, check=False):
 		self.check_syntax = check
 		self.global_env = Env(None, '-global-')
 		self.current_env = self.global_env
 
-	def set_new_env(self):
-		env = Env(self.current_env)
+	def set_new_env(self, name=None, env_type=None):
+		env = Env(self.current_env, name, env_type)
 		self.current_env.childs.append(env)
 		self.current_env = env
 
@@ -94,6 +28,8 @@ class Syntax:
 		self.current_env = self.current_env.parent
 
 	def check_if_declared_variable(self, identifier):
+		if not self.check_syntax:
+			return
 		return self.current_env.find(identifier.name)
 
 	def check_if_part_of_class(self, var, class_name):
@@ -121,13 +57,13 @@ class Syntax:
 				#CHECK IF MEMBER
 				var = self.check_if_part_of_class(to_check, var_class)
 				if not var:
-					raise Exception
+					raise NotAClassMemberError
 			return var
 		#GOT IDENTIFIER
 		else:
 			var = self.check_if_declared_variable(id_)
 			if not var:
-				raise NotDeclaredError
+				raise NotDeclaredVariableError
 			return var
 
 	def check_funcall(self, funcall):
@@ -136,36 +72,39 @@ class Syntax:
 		id_, args = funcall.name, funcall.args
 		fun_def = self.check_id(id_)
 		if fun_def.type_ != EntityType.Fun:
-			raise Exception('Not callable')
+			raise NotCallableError
 		params = fun_def.struct.env.dict
 		if len(params) != len(args):
-			raise Exception('Wrong number of args')
+			raise WrongNumberOfArgsError
 		for arg, param in zip(args, params.values()):
 			#BOTH IDENTIFIERS
 			if isinstance(arg, Identifier) or isinstance(arg, Id):
 				arg_decl = self.check_id(arg)
 				#CHECK IF NOT FUN OR CLASS
 				if arg_decl.type_ != EntityType.Var:
-					raise Exception('Non-variable argument')
+					raise NotAVariableError
 				arg_type = arg_decl.struct.type_
 				param_type = param.struct.type_
-				if not isinstance(param_type, Identifier) \
-				  or (isinstance(arg_type, Identifier) and arg_type != param_type):
-					raise Exception('Invalid argument')
+				#BOTH OBJECTS 
+				if isinstance(param_type, Identifier) \
+				  and isinstance(arg_type, Identifier) and arg_type != param_type:
+					raise InvalidArgError
+				if type(param_type) != type(arg_type):
+					raise InvalidArgError
 			#ARG IS LITERAL
 			else:
 				if isinstance(param.struct.type_, Identifier):
-					raise Exception('Invalid argument')	
+					raise InvalidArgError
 
 	def check_if_simple_type(self, var):
 		if not self.check_syntax:
 			return
 		if var.type_ != EntityType.Var:
-			raise Exception('Variable required')
+			raise NotAVariableError
 		#CHECK IF VAR NOT FUN OR CLASS TODOOO
 		type_ = var.struct.type_
 		if isinstance(type_, Identifier):
-			raise Exception('Incompatibile types in aexp')
+			raise NotCompatibileTypeInExpressionError
 
 	def check_assignment(self, assign):
 		if not self.check_syntax:
@@ -173,10 +112,27 @@ class Syntax:
 		id_, value = assign.name, assign.value
 		var = self.check_id(id_)
 		if var.type_ != EntityType.Var:
-			raise Exception('L-value in assignment must be variable')
+			raise LValueNotAVariableError('L-value in assignment must be variable')
 		l_type = var.struct.type_
 		r_type = self.get_r_value_type(value)
 		self.compare_types(l_type, r_type)
+
+	def check_for_condition(self, cond, decl):
+		if not self.check_syntax:
+			return
+		id_ = cond.left
+		id_2 = decl.parameter.name
+		if id_ != id_2:
+			raise InvalidForConditionError
+
+	def check_for_increment(self, assign, decl):
+		if not self.check_syntax:
+			return
+		id_1, binop = assign.name, assign.value
+		id_2, literal = binop.left, binop.right
+		id_3 = decl.parameter.name
+		if id_1 != id_3 or id_2 != id_3 or not isinstance(literal, IntNum):
+			raise InvalidForIncrementError
 
 	def get_r_value_type(self, value):
 		if isinstance(value, Aexp):
@@ -186,29 +142,28 @@ class Syntax:
 		if type(value) in [Id, Identifier]:
 			var = self.check_id(value)
 			if var.type_ != EntityType.Var:
-				raise Exception('Not a variable')
+				raise NotAVariableError
 			type_ = var.struct.type_
 			return type_
 		if isinstance(value, FunCall):
 			name = value.name
 			fun = self.check_id(name)
 			if fun.type_ != EntityType.Fun:
-				raise Exception('Not callable')
+				raise NotCallableError
 			type_ = fun.struct.type_
-			print(fun, type_)
 			return type_
-		raise Exception('Unknown Type')
+		raise UnknownTypeError
 
 	def compare_types(self, l_val, r_val):
 		if isinstance(l_val, TypeSpec):
 			if l_val == TypeSpec('bool'):
 				if not isinstance(r_val, TypeSpec) or r_val != TypeSpec('bool'):
-					raise Exception('Assign type mismatch')
-			if not isinstance(r_val, TypeSpec):
-				raise Exception('Assign type mismatch')
+					raise AssignMismatchTypeError
+			if not isinstance(r_val, TypeSpec) and not isinstance(r_val, Literal):
+				raise AssignMismatchTypeError
 		else:
 			if not isinstance(r_val, Identifier) or l_val != r_val:
-				raise Exception('Assign type mismatch')		
+				raise AssignMismatchTypeError	
 
 
 	#AFTER LEAVING
@@ -226,10 +181,10 @@ class Syntax:
 			#INIT PROHIBITED
 			#check if class exist
 			if not self.global_env.find_local(type_spec.name):
-				raise Exception()
+				raise NotDeclaredTypeError
 
 			if value:
-				raise Exception('Initializing object')
+				raise InitializingObjectError
 
 		#SIMPLE TYPE
 		else:
@@ -239,31 +194,22 @@ class Syntax:
 				r_type = self.get_r_value_type(value)
 				self.compare_types(l_type, r_type)
 
-		class_ = None	
-
-		if member:
-			class_ = self.current_env.name
-		var = VariableStruct(type_spec, class_)
+		var = VariableStruct(type_spec)
 		self.current_env.dict[name] = Entity(EntityType.Var, var)
 
 	#after leaving fun_env
-	def add_function_definition(self, fun_def):
+	def add_function_definition(self, type_, id_):
 		if not self.check_syntax:
 			return
-		type_, id_= fun_def.type, fun_def.name
-		class_ = None
-		fun_env = self.current_env.childs[-1]
-		fun_env.name = id_.name
-		if self.current_env.parent:
-			class_ = self.current_env.name
-		fun = FunctionStruct(type_, class_, fun_env)
-		self.current_env.dict[id_.name] = Entity(EntityType.Fun, fun)
+		name = id_.name
+		self.current_env.name = name
+		fun = FunctionStruct(type_, self.current_env)
+		self.current_env.parent.dict[name] = Entity(EntityType.Fun, fun)
 
 	#pre leaving class_env
-	def add_class(self, class_):
+	def add_class(self, id_):
 		if not self.check_syntax:
 			return
-		id_ = class_.name
 		cl = ClassStruct(self.current_env)
 		self.global_env.dict[id_.name] = Entity(EntityType.Class, cl)
 
@@ -278,13 +224,60 @@ class Syntax:
 		if self.check_if_declared_variable(id_):
 			raise AlreadyDeclaredError
 
+	def check_fun_identifier(self, id_):
+		if not self.check_syntax:
+			return
+		env = self.current_env
+		if env.parent:
+			env = env.parent
+		if env.find_local(id_.name):
+			raise AlreadyDeclaredError
+
 	def check_parameter(self, param):
 		if not self.check_syntax:
 			return
 		type_spec, name = param.type, param.name.name
 		if self.current_env.find_local(name):
 			raise AlreadyDeclaredError()
-		var = VariableStruct(type_spec, None)
+		var = VariableStruct(type_spec)
 		self.current_env.dict[name] = Entity(EntityType.Var, var)
 
+	def check_return(self, jump):
+		if not self.check_syntax:
+			return
+		env = self.current_env
+		while env != self.global_env:
+			if env.env_type == EnvType.Fun:
+				fun_name = env.name
+				return_var = jump.returnable
+				if isinstance(return_var, Identifier) or isinstance(return_var, Id):
+					return_var = self.check_id(return_var)
+					if return_var.type_ != EntityType.Var:
+						raise NotAVariableError
+					return_var = return_var.struct.type_
 
+				env = env.parent
+				fun = env.find_local(fun_name)
+				ret_type = fun.struct.type_
+				if isinstance(ret_type, TypeSpec) and ret_type == TypeSpec('void'):
+					if return_var:
+						raise WrongTypeReturnError('Should return void')
+					else:
+						return
+				try:
+					self.compare_types(ret_type, return_var)
+				except:
+					raise WrongTypeReturnError('Wrong return type')
+				return
+			env = env.parent
+		raise ReturnOutsideFunctionError('Return statement outside function')
+
+	def check_if_inside_loop(self):
+		if not self.check_syntax:
+			return
+		env = self.current_env
+		while env != self.global_env:
+			if env.env_type == EnvType.Loop:
+				return
+			env = env.parent
+		raise JumpStmtOutsideLoopError('Continue or break outside loop')
