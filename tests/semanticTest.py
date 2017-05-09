@@ -99,7 +99,7 @@ class TestSemantic(unittest.TestCase):
 		self.assertTrue(result)
 
 	def test_declare_many_colliding_in_many_scopes(self):
-		code = 'int x; int fun(){float x; {char x;{double x;}}}'
+		code = 'int x; int fun(){float x; if(true){char x;if(false){double x;}}}'
 		result =  parseCode(code)
 		self.assertTrue(result)
 
@@ -127,16 +127,6 @@ class TestSemantic(unittest.TestCase):
 		code = 'int fun(int a, char a){}'
 		with self.assertRaises(AlreadyDeclaredError):
 			parseCode(code)
-
-	def test_declare_many_colliding_in_many_scopes(self):
-		code = 'int x; int fun(){float x; {char x;{double x;}}}'
-		result =  parseCode(code)
-		self.assertTrue(result)
-
-	def test_declare_many_colliding_in_many_scopes(self):
-		code = 'int x; int fun(){float x; {char x;{double x;}}}'
-		result =  parseCode(code)
-		self.assertTrue(result)
 
 	"""def test_declare_fun_with_colliding_arg_var_inside_scope(self):
 					code = 'int fun(int a){char a;}'
@@ -181,7 +171,7 @@ class TestSemantic(unittest.TestCase):
 		self.assertTrue(result)
 
 	def test_declare_many_colliding_in_many_scopes_in_class(self):
-		code = 'class X{int x; int fun(){float x; {char x;{double x;}}}};'
+		code = 'class X{int x; int fun(){float x; if(true){char x;if(false){double x;}}}};'
 		result =  parseCode(code)
 		self.assertTrue(result)
 
@@ -209,16 +199,6 @@ class TestSemantic(unittest.TestCase):
 		code = 'class X{int fun(int a, char a){}};'
 		with self.assertRaises(AlreadyDeclaredError):
 			parseCode(code)
-
-	def test_declare_many_colliding_in_many_scopes_in_class(self):
-		code = 'class X{int x; int fun(){float x; {char x;{double x;}}}};'
-		result =  parseCode(code)
-		self.assertTrue(result)
-
-	def test_declare_many_colliding_in_many_scopes_in_class(self):
-		code = 'class X{int x; int fun(){float x; {char x;{double x;}}}};'
-		result =  parseCode(code)
-		self.assertTrue(result)
 
 	def test_declare_colliding_funs_out_and_in_class(self):
 		code = 'int fun(int a){} class X{int fun(int a){}};'
@@ -290,7 +270,7 @@ class TestSemantic(unittest.TestCase):
 			parseCode(code)
 
 	def test_call_from_deeper_nested_level(self):
-		code = 'int fun(){} int main(){{{fun();}}}'
+		code = 'int fun(){} int main(){if(true){if(false){fun();}}}'
 		result =  parseCode(code)
 		self.assertTrue(result)
 
@@ -355,13 +335,13 @@ class TestSemantic(unittest.TestCase):
 
 	def test_call_from_deeper_nested_level_in_nested_objects(self):
 		code = 'class A{int fun(){}}; class B{A a;}; class C{B b;}; C c;\
-			int main(){{{c.b.a.fun();}}}'
+			int main(){if(true){if(false){c.b.a.fun();}}}'
 		result =  parseCode(code)
 		self.assertTrue(result)
 
 	def test_call_with_override_function_in_nested_objects(self):
 		code = 'class A{int fun(){}}; class B{A a;}; class C{B b;}; C c;\
-			int main(){int fun; {{c.b.a.fun();}}}'
+			int main(){int fun; if(false){if(true){c.b.a.fun();}}}'
 		result =  parseCode(code)
 		self.assertTrue(result)
 

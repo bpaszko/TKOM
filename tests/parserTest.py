@@ -478,7 +478,7 @@ class TestParser(unittest.TestCase):
 		result = Decl(Param(TypeSpec('int'), Identifier('x')), None)
 
 		parser = createParser(code)
-		ast = parser.parseDecl()
+		ast = parser.parseStmt()
 
 		self.assertEqual(ast, result)
 
@@ -488,7 +488,7 @@ class TestParser(unittest.TestCase):
 		result = Decl(Param(TypeSpec('int'), Identifier('x')), IntNum(5))
 
 		parser = createParser(code)
-		ast = parser.parseDecl()
+		ast = parser.parseStmt()
 
 		self.assertEqual(ast, result)
 
@@ -497,7 +497,7 @@ class TestParser(unittest.TestCase):
 		result = Decl(Param(TypeSpec('int'), Identifier('x')), Identifier('y'))
 
 		parser = createParser(code)
-		ast = parser.parseDecl()
+		ast = parser.parseStmt()
 
 		self.assertEqual(ast, result)
 
@@ -506,7 +506,7 @@ class TestParser(unittest.TestCase):
 		result = Decl(Param(TypeSpec('int'), Identifier('x')), BinopAexp(IntNum(2), '+', IntNum(4)))
 
 		parser = createParser(code)
-		ast = parser.parseDecl()
+		ast = parser.parseStmt()
 
 		self.assertEqual(ast, result)
 
@@ -515,7 +515,7 @@ class TestParser(unittest.TestCase):
 		result = Decl(Param(TypeSpec('int'), Identifier('x')), BinopAexp(IntNum(2), '+', IntNum(4)))
 
 		parser = createParser(code)
-		ast = parser.parseDecl()
+		ast = parser.parseStmt()
 
 		self.assertEqual(ast, result)
 
@@ -524,7 +524,7 @@ class TestParser(unittest.TestCase):
 		result = Decl(Param(TypeSpec('int'), Identifier('x')), OrBexp(BoolLit('false'), BoolLit('true')))
 
 		parser = createParser(code)
-		ast = parser.parseDecl()
+		ast = parser.parseStmt()
 
 		self.assertEqual(ast, result)
 
@@ -533,7 +533,7 @@ class TestParser(unittest.TestCase):
 		result = Decl(Param(TypeSpec('int'), Identifier('x')), OrBexp(BoolLit('false'), BoolLit('true')))
 
 		parser = createParser(code)
-		ast = parser.parseDecl()
+		ast = parser.parseStmt()
 
 		self.assertEqual(ast, result)
 
@@ -800,7 +800,7 @@ class TestParser(unittest.TestCase):
 		result = FunDef(TypeSpec('int'), Identifier('fun'), [], CompoundStmt([]))
 
 		parser = createParser(code)
-		ast = parser.parseFunctionDefinition()
+		ast = parser.parseDefinition()
 
 		self.assertEqual(ast, result)
 
@@ -810,7 +810,7 @@ class TestParser(unittest.TestCase):
 			Identifier('a')), IntNum(5))]))
 
 		parser = createParser(code)
-		ast = parser.parseFunctionDefinition()
+		ast = parser.parseDefinition()
 
 		self.assertEqual(ast, result)
 
@@ -820,7 +820,7 @@ class TestParser(unittest.TestCase):
 			Param(TypeSpec('char'), Identifier('b'))], CompoundStmt([]))
 
 		parser = createParser(code)
-		ast = parser.parseFunctionDefinition()
+		ast = parser.parseDefinition()
 
 		self.assertEqual(ast, result)
 
@@ -831,7 +831,7 @@ class TestParser(unittest.TestCase):
 			CompoundStmt([AssignExp(Identifier('a'), BinopAexp(Identifier('k'), '+', Identifier('b')))]))
 
 		parser = createParser(code)
-		ast = parser.parseFunctionDefinition()
+		ast = parser.parseDefinition()
 
 		self.assertEqual(ast, result)
 
@@ -840,7 +840,7 @@ class TestParser(unittest.TestCase):
 		result = FunDef(TypeSpec('void'), Identifier('fun'), [], CompoundStmt([JumpStmt('return', None)]))
 
 		parser = createParser(code)
-		ast = parser.parseFunctionDefinition()
+		ast = parser.parseDefinition()
 
 		self.assertEqual(ast, result)
 
@@ -850,7 +850,7 @@ class TestParser(unittest.TestCase):
 			CompoundStmt([JumpStmt('return', Identifier('a'))]))
 
 		parser = createParser(code)
-		ast = parser.parseFunctionDefinition()
+		ast = parser.parseDefinition()
 
 		self.assertEqual(ast, result)
 
@@ -995,4 +995,3 @@ class TestParser(unittest.TestCase):
 
 if __name__ == '__main__':
 	unittest.main()
-

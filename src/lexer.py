@@ -160,7 +160,6 @@ class Lexer:
                 if self.current_tokens[self.pos-1].type == TokenType.EOF or \
                   (self.current_tokens[-1].type == TokenType.EOF and self.pos+i >= \
                   len(self.current_tokens)):
-                    print('hi')
                     raise EndOfInputError
 
         token = self.current_tokens[self.pos+i]
@@ -179,14 +178,18 @@ class Lexer:
         return token
         
 
+    def revert(self, pos):
+        self.pos = pos
+
+
     def change_tokens(self):
         next_line = self.stream.readline()
         if not next_line:
-            self.current_tokens = [Token(TokenType.EOF, 'EOF')]
-            self.pos = 0
+            self.current_tokens += [Token(TokenType.EOF, 'EOF')]
+            #self.pos = 0
             return
-        self.current_tokens = self.lex_line(next_line)
-        self.pos = 0
+        self.current_tokens += self.lex_line(next_line)
+        #self.pos = 0
         self.current_line += 1
 
 
