@@ -114,9 +114,10 @@ token_exprs = [
 
 
 class Token:
-    def __init__(self, type, value):
+    def __init__(self, type, value, line=None):
         self.type = type
         self.value = value
+        self.line = line
 
     def __eq__(self, other):
         return self.type == other.type and self.value == other.value
@@ -144,27 +145,7 @@ class Lexer:
         self.current_tokens = list()
         self.pos = 0
         self.current_line = 1
-        self.change_tokens()
-
-
-    def peek_token(self, i):
-        if self.pos < len(self.current_tokens):
-            if self.current_tokens[self.pos-1].type == TokenType.EOF or \
-              (self.current_tokens[-1].type == TokenType.EOF and self.pos+i >= \
-              len(self.current_tokens)):
-                raise EndOfInputError
-
-        while self.pos + i >= len(self.current_tokens):
-            self.load_more_tokens()
-            if self.pos < len(self.current_tokens):
-                if self.current_tokens[self.pos-1].type == TokenType.EOF or \
-                  (self.current_tokens[-1].type == TokenType.EOF and self.pos+i >= \
-                  len(self.current_tokens)):
-                    raise EndOfInputError
-
-        token = self.current_tokens[self.pos+i]
-        return token
-
+        self.load_more_tokens()
 
     def get_next_token(self):
         if self.pos == len(self.current_tokens):
@@ -172,7 +153,7 @@ class Lexer:
                 raise EndOfInputError
 
         while self.pos >= len(self.current_tokens):
-            self.change_tokens()
+            self.load_more_tokens()
         token = self.current_tokens[self.pos]
         self.pos += 1
         return token
@@ -182,21 +163,10 @@ class Lexer:
         self.pos = pos
 
 
-    def change_tokens(self):
-        next_line = self.stream.readline()
-        if not next_line:
-            self.current_tokens += [Token(TokenType.EOF, 'EOF')]
-            #self.pos = 0
-            return
-        self.current_tokens += self.lex_line(next_line)
-        #self.pos = 0
-        self.current_line += 1
-
-
     def load_more_tokens(self):
         next_line = self.stream.readline()
         if not next_line:
-            self.current_tokens += [Token(TokenType.EOF, 'EOF')]
+            self.current_tokens += [Token(TokenType.EOF, 'EOF', self.current_line)]
             return
         self.current_tokens += self.lex_line(next_line)
         self.current_line += 1
@@ -215,7 +185,7 @@ class Lexer:
                 if match:
                     text = match.group(0)
                     if tag:
-                        token = Token(tag, text)
+                        token = Token(tag, text, self.current_line)
                         tokens.append(token)
                     break
             if not match:

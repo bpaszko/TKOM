@@ -48,6 +48,10 @@ class Semantic:
 			#CHECK IF OBJECT VISIBLE
 			var = self.check_if_declared_variable(parent)
 			while isinstance(id_, Id):
+				#if var.type_ != EntityType.Var:
+				#	raise NotAVariableError(parent)
+				#if var.struct.type_ != Identifier:
+				#	raise NotAnObjectError 
 				to_check = id_ = id_.child
 				#STILL NESTED ID
 				if isinstance(id_, Id):
@@ -57,13 +61,13 @@ class Semantic:
 				#CHECK IF MEMBER
 				var = self.check_if_part_of_class(to_check, var_class)
 				if not var:
-					raise NotAClassMemberError
+					raise NotAClassMemberError(to_check, var_class)
 			return var
 		#GOT IDENTIFIER
 		else:
 			var = self.check_if_declared_variable(id_)
 			if not var:
-				raise NotDeclaredVariableError
+				raise NotDeclaredVariableError(id_.name)
 			return var
 
 	def check_funcall(self, funcall):
@@ -72,39 +76,41 @@ class Semantic:
 		id_, args = funcall.name, funcall.args
 		fun_def = self.check_id(id_)
 		if fun_def.type_ != EntityType.Fun:
-			raise NotCallableError
+			raise NotCallableError(id_)
 		params = fun_def.struct.env.dict
 		if len(params) != len(args):
-			raise WrongNumberOfArgsError
+			raise WrongNumberOfArgsError(id_, len(params), len(args))
 		for arg, param in zip(args, params.values()):
 			#BOTH IDENTIFIERS
 			if isinstance(arg, Identifier) or isinstance(arg, Id):
 				arg_decl = self.check_id(arg)
 				#CHECK IF NOT FUN OR CLASS
 				if arg_decl.type_ != EntityType.Var:
+					#raise NotAVariableError(arg)
 					raise NotAVariableError
 				arg_type = arg_decl.struct.type_
 				param_type = param.struct.type_
 				#BOTH OBJECTS 
 				if isinstance(param_type, Identifier) \
 				  and isinstance(arg_type, Identifier) and arg_type != param_type:
-					raise InvalidArgError
+					raise InvalidArgError(id_.to_name(), param_type.to_name(), arg_type.to_name())
 				if type(param_type) != type(arg_type):
-					raise InvalidArgError
+					#raise InvalidArgError(id_.to_name(), )
+					raise InvalidArgError #TODO
 			#ARG IS LITERAL
 			else:
 				if isinstance(param.struct.type_, Identifier):
-					raise InvalidArgError
+					raise InvalidArgError #TODO
 
 	def check_if_simple_type(self, var):
 		if not self.check_syntax:
 			return
 		if var.type_ != EntityType.Var:
-			raise NotAVariableError
+			raise LValueNotAVariableError# TODO CATCH IN PARSER OR SPLIT AEXP
 		#CHECK IF VAR NOT FUN OR CLASS TODOOO
 		type_ = var.struct.type_
 		if isinstance(type_, Identifier):
-			raise NotCompatibileTypeInExpressionError
+			raise NotCompatibileTypeInExpressionError()
 
 	def check_assignment(self, assign):
 		if not self.check_syntax:
@@ -112,7 +118,8 @@ class Semantic:
 		id_, value = assign.name, assign.value
 		var = self.check_id(id_)
 		if var.type_ != EntityType.Var:
-			raise LValueNotAVariableError('L-value in assignment must be variable')
+			#raise LValueNotAVariableError(id_)
+			raise LValueNotAVariableError
 		l_type = var.struct.type_
 		r_type = self.get_r_value_type(value)
 		self.compare_types(l_type, r_type)
@@ -123,7 +130,7 @@ class Semantic:
 		id_ = cond.left
 		id_2 = decl.parameter.name
 		if id_ != id_2:
-			raise InvalidForConditionError
+			raise InvalidForConditionError(id_.to_name(), id_2.to_name())
 
 	def check_for_increment(self, assign, decl):
 		if not self.check_syntax:
@@ -174,17 +181,16 @@ class Semantic:
 		parameter, value = decl.parameter, decl.value
 		type_spec, id_ = parameter.type, parameter.name
 		name = id_.name
-		#type_spec id_ = value
 
 		#OBJECT
 		if isinstance(type_spec, Identifier):
 			#INIT PROHIBITED
 			#check if class exist
 			if not self.global_env.find_local(type_spec.name):
-				raise NotDeclaredTypeError
+				raise NotDeclaredTypeError(type_spec.name)
 
 			if value:
-				raise InitializingObjectError
+				raise InitializingObjectError(name)
 
 		#SIMPLE TYPE
 		else:
@@ -212,6 +218,7 @@ class Semantic:
 			return
 		cl = ClassStruct(self.current_env)
 		self.global_env.dict[id_.name] = Entity(EntityType.Class, cl)
+		self.name_env(id_)
 
 	def name_env(self, id_):
 		if not self.check_syntax:
@@ -222,7 +229,7 @@ class Semantic:
 		if not self.check_syntax:
 			return
 		if self.check_if_declared_variable(id_):
-			raise AlreadyDeclaredError
+			raise AlreadyDeclaredError(id_.name)
 
 	def check_fun_identifier(self, id_):
 		if not self.check_syntax:
@@ -231,14 +238,14 @@ class Semantic:
 		if env.parent:
 			env = env.parent
 		if env.find_local(id_.name):
-			raise AlreadyDeclaredError
+			raise AlreadyDeclaredError(id_.name)
 
 	def check_parameter(self, param):
 		if not self.check_syntax:
 			return
 		type_spec, name = param.type, param.name.name
 		if self.current_env.find_local(name):
-			raise AlreadyDeclaredError()
+			raise AlreadyDeclaredError(name)
 		var = VariableStruct(type_spec)
 		self.current_env.dict[name] = Entity(EntityType.Var, var)
 

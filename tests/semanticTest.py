@@ -883,5 +883,5 @@ class TestSemantic(unittest.TestCase):
 
 if __name__ == '__main__':
 	unittest.main()
-	#code = 'class X{}; X fun(){X x; return x;}'
+	#code = 'class X{}; class Y{X x;}; int main(){Y y; X x; y.x = x;}'
 	#result =  parseCode(code)

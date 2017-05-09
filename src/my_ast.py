@@ -52,6 +52,9 @@ class Id:
     def __repr__(self):
         return 'Id(%s, %s)' % (self.parent, self.child)
 
+    def to_name(self):
+        return '%s.%s' % (self.parent.to_name(), self.child.to_name())
+ 
 
 class Identifier:  # VarAexp
     def __init__(self, name):
@@ -62,6 +65,9 @@ class Identifier:  # VarAexp
 
     def __repr__(self):
         return 'Identifier(%s)' % self.name
+
+    def to_name(self):
+        return self.name
 
 
 class BinopAexp(Aexp):
