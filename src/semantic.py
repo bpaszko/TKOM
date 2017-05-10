@@ -51,7 +51,7 @@ class Semantic:
 			if not isinstance(var_entity, Entity):
 				raise Exception("Not an Entity")
 		if not isinstance(var_entity.struct.type_, Identifier) or var_entity.type_ != EntityType.Var:
-			raise NotAnObjectError(var_id.to_name())
+			raise NotAnObjectError(var_id.to_text())
 		return var_entity.struct.type_.name
 
 	#gets id or identifier and returns entity if exist
@@ -69,7 +69,7 @@ class Semantic:
 					variable_to_check = id_.parent
 				variable_entity = self.check_if_part_of_class(variable_to_check.name, variable_class)
 				if not variable_entity:
-					raise NotAClassMemberError(variable_to_check.to_name(), variable_class)
+					raise NotAClassMemberError(variable_to_check.to_text(), variable_class)
 			return variable_entity
 		else:
 			variable_entity = self.check_if_declared_variable(id_)
@@ -83,7 +83,7 @@ class Semantic:
 		if not isinstance(var_entity, Entity):
 			raise Exception('Not an entity')
 		if var_entity.type_ != EntityType.Var:
-			raise NotAVariableError(id_.to_name())
+			raise NotAVariableError(id_.to_text())
 		return var_entity
 
 	def check_if_id_is_function(self, id_):
@@ -91,7 +91,7 @@ class Semantic:
 		if not isinstance(fun_entity, Entity):
 			raise Exception('Not an entity')
 		if fun_entity.type_ != EntityType.Fun:
-			raise NotCallableError(id_.to_name()) 
+			raise NotCallableError(id_.to_text()) 
 		return fun_entity
 
 	@staticmethod
@@ -101,7 +101,7 @@ class Semantic:
 			if not isinstance(fun_entity, Entity):
 				raise Exception('Not an entity')
 			if entity.type_ != EntityType.Fun:
-				raise NotCallableError(id_.to_name())
+				raise NotCallableError(id_.to_text())
 			return fun_entity
 		return fun_entity.struct.env.dict
 
@@ -150,12 +150,12 @@ class Semantic:
 	def throw_invalid_arg_error(id_, param_type, arg_type):
 		param_name, arg_name = Semantic.adjust_type(param_type), Semantic.adjust_type(arg_type)
 		type_dict = {
-			('Identifier', 'TypeSpec') : lambda x,y : (x.to_name(), str(y.value)),
-			('Identifier', 'Identifier') : lambda x,y: (x.to_name(), y.to_name()),
-			('Identifier', 'Literal') : lambda x,y: (x.to_name(), str(y.value)),
-			('TypeSpec', 'Identifier') : lambda x,y : (str(x.value), y.to_name()),
+			('Identifier', 'TypeSpec') : lambda x,y : (x.to_text(), str(y.value)),
+			('Identifier', 'Identifier') : lambda x,y: (x.to_text(), y.to_text()),
+			('Identifier', 'Literal') : lambda x,y: (x.to_text(), str(y.value)),
+			('TypeSpec', 'Identifier') : lambda x,y : (str(x.value), y.to_text()),
 		}
-		fun_name = id_.to_name()
+		fun_name = id_.to_text()
 		gen_types_str = type_dict[(param_name, arg_name)]
 		param, arg = gen_types_str(param_type, arg_type)
 		raise InvalidArgError(fun_name, param, arg)
@@ -165,7 +165,7 @@ class Semantic:
 		id_, args = funcall.name, funcall.args
 		params = Semantic.get_function_parameters(fun_entity, check=False)
 		if len(params) != len(args):
-			raise WrongNumberOfArgsError(id_.to_name(), len(params), len(args))
+			raise WrongNumberOfArgsError(id_.to_text(), len(params), len(args))
 		for arg, param_entity in zip(args, params.values()):
 			param_type = Semantic.get_entity_return_type(param_entity, check=False)
 			if isinstance(arg, Identifier) or isinstance(arg, Id): #fun(x)
@@ -194,17 +194,17 @@ class Semantic:
 		var_entity = self.check_if_id_is_variable(id_)
 		var_type = Semantic.get_entity_return_type(var_entity, check=False)
 		if isinstance(var_type, Identifier):
-			raise NotCompatibileTypeInExpressionError(id_.to_name())
+			raise NotCompatibileTypeInExpressionError(id_.to_text())
 
 
 	@staticmethod #MAYBE ADDITIONAL CHECK LATER && VOIDS?
 	def throw_assign_mismatch_type_error(l_type, r_type):
 		l_type_name, r_type_name = Semantic.adjust_type(l_type), Semantic.adjust_type(r_type)
 		type_dict = {
-			('Identifier', 'TypeSpec') : lambda x,y : (x.to_name(), str(y.value)),
-			('Identifier', 'Identifier') : lambda x,y: (x.to_name(), y.to_name()),
-			('Identifier', 'Literal') : lambda x,y: (x.to_name(), str(y.value)),
-			('TypeSpec', 'Identifier') : lambda x,y : (str(x.value), y.to_name()),
+			('Identifier', 'TypeSpec') : lambda x,y : (x.to_text(), str(y.value)),
+			('Identifier', 'Identifier') : lambda x,y: (x.to_text(), y.to_text()),
+			('Identifier', 'Literal') : lambda x,y: (x.to_text(), str(y.value)),
+			('TypeSpec', 'Identifier') : lambda x,y : (str(x.value), y.to_text()),
 		}
 		gen_types_str = type_dict[(l_type_name, r_type_name)]
 		l_type, r_type = gen_types_str(l_type, r_type)
@@ -246,7 +246,7 @@ class Semantic:
 		id_ = cond.left
 		id_2 = decl.parameter.name
 		if id_ != id_2:
-			raise InvalidForConditionError(id_.to_name(), id_2.to_name())
+			raise InvalidForConditionError(id_.to_text(), id_2.to_text())
 
 	def check_for_increment(self, assign, decl):
 		if not self.check_syntax:
@@ -350,15 +350,15 @@ class Semantic:
 		fun_ret_type_name = Semantic.adjust_type(fun_ret_type)
 		return_type_name = Semantic.adjust_type(return_type)
 		type_dict = {
-			('Identifier', 'TypeSpec') : lambda x,y : (x.to_name(), str(y.value)),
-			('Identifier', 'Identifier') : lambda x,y: (x.to_name(), y.to_name()),
-			('Identifier', 'Literal') : lambda x,y: (x.to_name(), str(y.value)),
-			('TypeSpec', 'Identifier') : lambda x,y : (str(x.value), y.to_name()),
+			('Identifier', 'TypeSpec') : lambda x,y : (x.to_text(), str(y.value)),
+			('Identifier', 'Identifier') : lambda x,y: (x.to_text(), y.to_text()),
+			('Identifier', 'Literal') : lambda x,y: (x.to_text(), str(y.value)),
+			('TypeSpec', 'Identifier') : lambda x,y : (str(x.value), y.to_text()),
 			('Void', 'TypeSpec') : lambda x,y: ('None', str(y.value)), 
-			('Void', 'Identifier') : lambda x,y: ('None', y.to_name()), 
+			('Void', 'Identifier') : lambda x,y: ('None', y.to_text()), 
 			('Void', 'Literal') : lambda x,y: ('None', str(y.value)), 
 			('TypeSpec', 'Void') : lambda x,y: (str(x.value), 'None'), 
-			('Identifier', 'Void') : lambda x,y: (x.to_name(), 'None'), 
+			('Identifier', 'Void') : lambda x,y: (x.to_text(), 'None'), 
 		}
 		gen_types_str = type_dict[(fun_ret_type_name, return_type_name)]
 		fun_ret, ret = gen_types_str(fun_ret_type, return_type)

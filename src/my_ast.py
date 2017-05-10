@@ -18,6 +18,12 @@ class Literal(Aexp):
     def __hash__(self):
         return hash(self.value)
 
+    def to_text(self):
+        return str(self.value)
+
+    def to_python(self):
+        return str(self.value)
+
 class IntNum(Literal):  # IntAexp
     def __init__(self, value):
         self.value = int(value)
@@ -62,9 +68,12 @@ class Id:
     def __repr__(self):
         return 'Id(%s, %s)' % (self.parent, self.child)
 
-    def to_name(self):
-        return '%s.%s' % (self.parent.to_name(), self.child.to_name())
- 
+    def to_text(self):
+        return '%s.%s' % (self.parent.to_text(), self.child.to_text())
+
+    def to_python(self):
+        return self.parent.to_python() + '.' + self.child.to_python()
+  
 
 class Identifier:  # VarAexp
     def __init__(self, name):
@@ -76,7 +85,10 @@ class Identifier:  # VarAexp
     def __repr__(self):
         return 'Identifier(%s)' % self.name
 
-    def to_name(self):
+    def to_text(self):
+        return self.name
+
+    def to_python(self):
         return self.name
 
 
@@ -91,6 +103,9 @@ class BinopAexp(Aexp):
 
     def __repr__(self):
         return 'BinopAexp(%s, %s, %s)' % (self.left, self.op, self.right)
+
+    def to_python(self):
+        return self.left.to_python() + ' ' + str(self.op) + ' ' + self.right.to_python()
 
 
 class Bexp:
@@ -107,6 +122,9 @@ class BoolLit(Bexp):
     def __repr__(self):
         return 'BoolLit(%s)' % self.value
 
+    def to_python(self):
+        return str(self.value)
+
 
 class RelopBexp(Bexp):
     def __init__(self, left, op, right):
@@ -120,6 +138,8 @@ class RelopBexp(Bexp):
     def __repr__(self):
         return 'RelopBexp(%s, %s, %s)' % (self.left, self.op, self.right)
 
+    def to_python(self):
+        return self.left.to_python() + ' ' + str(self.op) + ' ' + self.right.to_python()
 
 class AndBexp(Bexp):
     def __init__(self, left, right):
@@ -131,6 +151,9 @@ class AndBexp(Bexp):
 
     def __repr__(self):
         return 'AndBexp(%s, %s)' % (self.left, self.right)
+
+    def to_python(self):
+        return self.left.to_python() + ' and ' + self.right.to_python()
 
 
 class OrBexp(Bexp):
@@ -144,6 +167,9 @@ class OrBexp(Bexp):
     def __repr__(self):
         return 'OrBexp(%s, %s)' % (self.left, self.right)
 
+    def to_python(self):
+        return self.left.to_python() + ' or ' + self.right.to_python()
+
 
 class NotBexp(Bexp):
     def __init__(self, exp):
@@ -154,6 +180,9 @@ class NotBexp(Bexp):
 
     def __repr__(self):
         return 'NotBexp(%s)' % (self.exp)
+
+    def to_python(self):
+        return 'not ' + self.exp.to_python()
 
 
 class Statement(Equality):
@@ -170,6 +199,12 @@ class CompoundStmt(Statement):
     def __repr__(self):
         return 'CompoundStmt(%s)' % (self.statements)
 
+    """def to_python(self):
+        code = ''
+        for stmt in self.statements:
+            code += stmt.to_python(tabs+1) +'\n'
+        return code """
+
 
 class IfStmt(Statement):
     def __init__(self, condition, true_stmt, false_stmt):
@@ -183,6 +218,12 @@ class IfStmt(Statement):
     def __repr__(self):
         return 'IfStmt(%s, %s, %s)' % (self.condition, self.true_stmt, self.false_stmt)
 
+    """def to_python(self):
+        code = tabs * '\t' + 'if ' + self.condition.to_python() + ':\n' +  
+            self.true_stmt.to_python(tabs + 1)
+        if self.false_stmt:
+            code += tabs * '\t' + 'else:\n' + self.false_stmt.to_python(tabs+1)"""
+
 
 class WhileStmt(Statement):
     def __init__(self, condition, body):
@@ -195,6 +236,10 @@ class WhileStmt(Statement):
     def __repr__(self):
         return 'WhileStmt(%s, %s)' % (self.condition, self.body)
 
+    """def to_python(self):
+        code = tabs * '\t' + 'while ' + self.condition.to_python() + ':\n' +
+            self.body.to_python(tabs+1) + '\n'"""
+
 
 class JumpStmt(Statement):
     def __init__(self, value, returnable=None):
@@ -206,6 +251,12 @@ class JumpStmt(Statement):
 
     def __repr__(self):
         return 'JumpStmt(%s, %s)' % (self.value, self.returnable)
+
+    def to_python(self):
+        code = self.value
+        if self.returnable:
+            code += ' ' + self.returnable.to_python()
+        return code
 
 
 class ForStmt(Statement):
@@ -222,6 +273,8 @@ class ForStmt(Statement):
     def __repr__(self):
         return 'ForStmt(%s, %s, %s, %s)' % (self.init, self.condition, self.increment, self.body)
 
+    """def to_python(self):
+        code = #TODO"""
 
 class AssignExp(Statement):
     def __init__(self, name, value):
@@ -234,6 +287,8 @@ class AssignExp(Statement):
     def __repr__(self):
         return 'AssignExp(%s, =, %s)' % (self.name, self.value)
 
+    def to_python(self):
+        return self.name.to_python() + ' = ' + self.value.to_python() 
 
 class Decl:
     def __init__(self, parameter, value):
@@ -246,6 +301,17 @@ class Decl:
     def __repr__(self):
         return 'Decl(%s, =, %s)' % (self.parameter, self.value)
 
+    def to_python(self):
+        code = self.parameter.to_python() + ' = ' 
+        type_ = self.parameter.type
+        if isinstance(type_, Identifier):
+            code += type_.to_python() + '()'
+        else:
+            if self.value:
+                code += self.value.to_python()
+            else:
+                code += '0'
+        return code
 
 class TypeSpec:
     def __init__(self, value):
@@ -256,6 +322,9 @@ class TypeSpec:
 
     def __repr__(self):
         return 'TypeSpec(%s)' % (self.value)
+
+    """def to_python(self):
+        return ''"""
 
 
 class Param:
@@ -269,6 +338,8 @@ class Param:
     def __repr__(self):
         return 'Param(%s, %s)' % (self.type, self.name)
 
+    def to_python(self):
+        return self.name.to_python()
 
 class Program:
     def __init__(self, definitions):
@@ -279,6 +350,11 @@ class Program:
 
     def __repr__(self):
         return 'Program(%s)' % (self.definitions)
+
+    """def to_python(self):
+        code = ''
+        for definition in definitions:
+            code += definition.to_python(tabs)"""
 
 class FunDef:
     def __init__(self, type, name, parameters, body):
@@ -293,6 +369,14 @@ class FunDef:
 
     def __repr__(self):
         return 'FunDef(%s, %s, %s, %s)' % (self.type, self.name, self.parameters, self.body)
+
+    """def to_python(self):
+        code = tabs * '\t' + self.name.to_python() + '('
+        for i, parameter in enumerate(parameters):
+            code += parameter.to_python()
+            if i < len(parameters) - 1:
+                code += ', '
+        code += '):\n' + self.body.to_python(tabs+1)"""
 
 class Class:
     def __init__(self, name, members):
@@ -327,3 +411,12 @@ class FunCall:
 
     def __repr__(self):
         return 'FunCall(%s, %s)' % (self.name, self.args)
+
+    def to_python(self):
+        code = self.name.to_python() + '(' 
+        for i, arg in enumerate(self.args):
+            code += arg.to_python()
+            if i < len(self.args) - 1:
+                code += ', '
+        code += ')'
+        return code
