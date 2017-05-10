@@ -115,7 +115,8 @@ class Parser():
             return self.parseLiteral()
         if self.current_token.type == TokenType.Identifier:
             id_ = self.parseId()
-            self.semantic.check_if_simple_type(self.semantic.check_if_valid_id(id_))
+            self.semantic.check_if_id_is_simple_type_variable(id_)
+            #self.semantic.check_if_simple_type_variable(self.semantic.check_if_valid_id(id_))
             return id_
         token = self.current_token
         if token.type == TokenType.OpenParanthesis:
@@ -175,7 +176,8 @@ class Parser():
     def parseOperand(self):
         if self.current_token.type == TokenType.Identifier:
             id_ = self.parseId()
-            self.semantic.check_if_simple_type(self.semantic.check_if_valid_id(id_))
+            self.semantic.check_if_id_is_simple_type_variable(id_)
+            #self.semantic.check_if_simple_type_variable(self.semantic.check_if_valid_id(id_))
             return id_
         if self.current_token.type in literals_types:
             return self.parseLiteral()
@@ -394,7 +396,7 @@ class Parser():
         id = self.parseId()
         init = self.parseInitialization()
         node = AssignExp(id, init)
-        self.semantic.check_assignment(node)
+        self.semantic.check_if_valid_assignment(node)
         return node
 
     def parseInitialization(self):
@@ -490,7 +492,7 @@ class Parser():
         self.semantic.set_new_env(env_type=EnvType.Fun)
         type_, name = param.type, param.name
         self.eat(TokenType.OpenParanthesis)
-        self.semantic.check_fun_identifier(name)
+        #self.semantic.check_fun_identifier(name)
         params = self.parseParameterList()
         self.semantic.add_function_definition(type_, name)
         self.eat(TokenType.CloseParanthesis)
@@ -537,7 +539,6 @@ class Parser():
         self.semantic.set_new_env(env_type=EnvType.Class)
         self.eat(TokenType.Class)
         name = self.parseIdentifier()
-        self.semantic.check_identifier(name)
         self.semantic.add_class(name)
         self.eat(TokenType.LBracket)
         member_spec = self.parseMemberSpecification()

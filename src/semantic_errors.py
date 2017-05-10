@@ -17,15 +17,15 @@ class NotAClassMemberError(SemanticError):
 		return '%s is not a member of %s' % (self.var, self.class_)
 
 class NotCallableError(SemanticError):
-	def __init__(self, id_):
-		self.name = id_.to_name()
+	def __init__(self, name):
+		self.name = name
 
 	def __str__(self):
 		return '%s is not callable' % (self.name)
 
 class WrongNumberOfArgsError(SemanticError):
 	def __init__(self, fun, params_num, args_num):
-		self.fun_name = fun.to_name()
+		self.fun_name = fun
 		self.params_num = params_num
 		self.args_num = args_num
 
@@ -33,12 +33,11 @@ class WrongNumberOfArgsError(SemanticError):
 		return '%s takes %d args, got %d' % (self.fun_name, self.params_num, self.args_num)
 
 class NotAVariableError(SemanticError):
-	#def __init__(self, id_):
-	#	self.name = id_.to_name()
-
-	#def __str__(self):
-	#	return '%s is not a variable' % (self.name)
-	pass 
+	def __init__(self, name):
+		self.name = name
+	
+	def __str__(self):
+		return '%s is not a variable' % (self.name) 
 
 class LValueNotAVariableError(SemanticError):
 	def __init__(self, name):
@@ -47,15 +46,15 @@ class LValueNotAVariableError(SemanticError):
 	def __str__(self):
 		return '%s is not a variable' % (self.name)
 
+class WrongReturnTypeError(SemanticError):
+	def __init__(self, fun_name, fun_ret, ret):
+		self.fun_name = fun_name
+		self.fun_ret = fun_ret
+		self.ret = ret
 
-class ReturnOutsideFunctionError(SemanticError):
-	pass
-
-class JumpStmtOutsideLoopError(SemanticError):
-	pass
-
-class WrongTypeReturnError(SemanticError):
-	pass
+	def __str__(self):
+		return 'Function %s should return: %s, instead of: %s' \
+			% (self.fun_name, self.fun_ret, self.ret)
 
 class InitializingObjectError(SemanticError):
 	def __init__(self, name):
@@ -90,21 +89,22 @@ class AlreadyDeclaredError(SemanticError):
 		return '%s has already been declared' % (self.name)
 
 class AssignMismatchTypeError(SemanticError):
-	pass
+	def __init__(self, type_1, type_2):
+		self.type_1 = type_1
+		self.type_2 = type_2
 
-#TODO
+	def __str__(self):
+		return 'Cannot assign %s to %s' % (self.type_2, self.type_1)
+
+
 class InvalidArgError(SemanticError):
-	#def __init__(self, fun_name, param_type, arg_type):
-	#	self.fun_name = fun_name
-	#	self.param_type = param_type
-	#	self.arg_type = arg_type
-	#
-	#def __str__(self):
-	#	return '%s requires %s, got %s' % (self.fun_name, self.param_type, self.arg_type)
-	pass
-
-class UnknownTypeError(SemanticError):
-	pass
+	def __init__(self, fun_name, param_type, arg_type):
+		self.fun_name = fun_name
+		self.param_type = param_type
+		self.arg_type = arg_type
+	
+	def __str__(self):
+		return '%s requires %s, got %s' % (self.fun_name, self.param_type, self.arg_type)
 
 class NotCompatibileTypeInExpressionError(SemanticError):
 	def __init__(self, name):
@@ -113,5 +113,32 @@ class NotCompatibileTypeInExpressionError(SemanticError):
 	def __str__(self):
 		return 'Cannot use object of type ' % (self.name)
 
+class NotAClassError(SemanticError):
+	def __init__(self, name):
+		self.name = name
+
+	def __str__(self):
+		return '%s is not a class name' % (self.name)
+
 class NotAnObjectError(SemanticError):
+	def __init__(self, name):
+		self.name = name
+
+	def __str__(self):
+		return '%s is not an object' % self.name
+
+class VoidVariableDeclarationError(SemanticError):
+	def __init__(self, name):
+		self.name = name
+
+	def __str__(self):
+		return 'Declaring void variable: %s' % self.name
+
+class UnknownTypeError(SemanticError):
+	pass
+
+class ReturnOutsideFunctionError(SemanticError):
+	pass
+
+class JumpStmtOutsideLoopError(SemanticError):
 	pass

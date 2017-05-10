@@ -53,6 +53,26 @@ class TestSemantic(unittest.TestCase):
 		result =  parseCode(code)
 		self.assertTrue(result)
 
+	def test_declare_void_function(self):
+		code = 'void fun(){}'
+		result =  parseCode(code)
+		self.assertTrue(result)
+
+	def test_declare_void_member_function(self):
+		code = 'class X{void fun(){}};'
+		result =  parseCode(code)
+		self.assertTrue(result)
+
+	def test_declare_void_variable(self):
+		code = 'void x;'
+		with self.assertRaises(VoidVariableDeclarationError):
+			parseCode(code)
+
+	def test_declare_void_member_variable(self):
+		code = 'class X{void x;};'
+		with self.assertRaises(VoidVariableDeclarationError):
+			parseCode(code)
+
 	def test_coliding_declares(self):
 		code = 'int x; char x;'
 		with self.assertRaises(AlreadyDeclaredError):
@@ -127,12 +147,6 @@ class TestSemantic(unittest.TestCase):
 		code = 'int fun(int a, char a){}'
 		with self.assertRaises(AlreadyDeclaredError):
 			parseCode(code)
-
-	"""def test_declare_fun_with_colliding_arg_var_inside_scope(self):
-					code = 'int fun(int a){char a;}'
-					with self.assertRaises(AlreadyDeclaredError):
-						parseCode(code)"""
-
 
 	def test_declare_class_with_members(self):
 		code = 'class X{int k; int fun(){}};'
@@ -239,15 +253,21 @@ class TestSemantic(unittest.TestCase):
 		with self.assertRaises(WrongNumberOfArgsError):
 			parseCode(code)
 
-	def test_fun_call_fun_with_wrong_args_v1(self):
+	def test_fun_call_fun_with_wrong_args_literal_to_object(self):
 		code = 'class X{}; int fun(int a, X b){} int main(){X y; fun(2, 2);}'
 		with self.assertRaises(InvalidArgError):
 			parseCode(code)
 
-	def test_fun_call_fun_with_wrong_args_v2(self):
+	def test_fun_call_fun_with_wrong_args_simple_type_to_object(self):
+		code = 'class X{}; int fun(int a, X b){} int main(){int k; fun(k, k);}'
+		with self.assertRaises(InvalidArgError):
+			parseCode(code)
+
+	def test_fun_call_fun_with_wrong_args_object_to_simple_type(self):
 		code = 'class X{}; int fun(int a, X b){} int main(){X y; fun(y, y);}'
 		with self.assertRaises(InvalidArgError):
 			parseCode(code)
+
 
 	def test_call_variable(self):
 		code = 'int main(){int x; x();}'
@@ -356,6 +376,17 @@ class TestSemantic(unittest.TestCase):
 		with self.assertRaises(NotAClassMemberError):
 			parseCode(code)
 
+	def test_nested_call_with_a_simple_type_in_path(self):
+		code = 'class A{int fun(){}}; class B{A a; int ax;}; class C{B b;}; C c;\
+			int main(){C c; c.b.ax.fun();}'
+		with self.assertRaises(NotAnObjectError):
+			parseCode(code)
+
+	def test_nested_call_with_a_fun_in_path(self):
+		code = 'class A{int fun(){}}; class B{A a; int fun2(){}}; class C{B b;}; C c;\
+			int main(){C c; c.b.fun2.fun();}'
+		with self.assertRaises(NotAnObjectError):
+			parseCode(code)
 
 	#TEST AEXP
 	def test_simple_aexp(self):
@@ -519,12 +550,12 @@ class TestSemantic(unittest.TestCase):
 
 	def test_assign_to_fun(self):
 		code = 'int fun(){} int main(){int x; fun = x;}'
-		with self.assertRaises(LValueNotAVariableError):
+		with self.assertRaises(NotAVariableError):
 			parseCode(code)
 
 	def test_assign_to_class(self):
 		code = 'class X{}; int main(){X x; X = x;}'
-		with self.assertRaises(LValueNotAVariableError):
+		with self.assertRaises(NotAVariableError):
 			parseCode(code)
 
 	def test_assign_to_object_invalid_type(self):
@@ -544,7 +575,7 @@ class TestSemantic(unittest.TestCase):
 
 	def test_assign_to_nested_fun(self):
 		code = 'class X{int fun(){}}; int main(){X x; int y; x.fun = y;}'
-		with self.assertRaises(LValueNotAVariableError):
+		with self.assertRaises(NotAVariableError):
 			parseCode(code)
 
 
@@ -592,12 +623,12 @@ class TestSemantic(unittest.TestCase):
 
 	def test_assign_to_fun_fun_call(self):
 		code = 'int fun(){} int main(){int x; fun = fun();}'
-		with self.assertRaises(LValueNotAVariableError):
+		with self.assertRaises(NotAVariableError):
 			parseCode(code)
 
 	def test_assign_to_class_fun_call(self):
 		code = 'class X{}; X fun(){} int main(){X x; X = fun();}'
-		with self.assertRaises(LValueNotAVariableError):
+		with self.assertRaises(NotAVariableError):
 			parseCode(code)
 
 	def test_assign_to_object_invalid_type_fun_call(self):
@@ -629,11 +660,6 @@ class TestSemantic(unittest.TestCase):
 
 	def test_assign_aexp_to_object(self):
 		code = 'class X{}; int main(){X x; x = 2 + 3;}'
-		with self.assertRaises(AssignMismatchTypeError):
-			parseCode(code)
-
-	def test_assign_aexp_to_bool(self):
-		code = 'class X{}; int main(){bool x; x = 2 + 3;}'
 		with self.assertRaises(AssignMismatchTypeError):
 			parseCode(code)
 
@@ -854,6 +880,16 @@ class TestSemantic(unittest.TestCase):
 		result =  parseCode(code)
 		self.assertTrue(result)
 
+	def test_member_return_nested_object(self):
+		code = 'class X{}; class Y{X x;}; X fun(){Y y; return y.x;}'
+		result =  parseCode(code)
+		self.assertTrue(result)
+
+	def test_member_return_nested_var(self):
+		code = 'class X{int a;}; class Y{X x;}; int fun(){Y y; return y.x.a;}'
+		result =  parseCode(code)
+		self.assertTrue(result)
+
 	def test_member_return_void(self):
 		code = 'class Y{void fun(){return;}};'
 		result =  parseCode(code)
@@ -879,9 +915,37 @@ class TestSemantic(unittest.TestCase):
 		with self.assertRaises(NotAVariableError):
 			parseCode(code)
 
+	def test_return_wrong_object(self):
+		code = 'class X{}; class Y{}; X fun(){Y y; return y;}'
+		with self.assertRaises(WrongReturnTypeError):
+			parseCode(code)
 
+	def test_void_return_obj(self):
+		code = 'class X{}; void fun2(){X x; return x;};'
+		with self.assertRaises(WrongReturnTypeError):
+			parseCode(code)
+
+	def test_void_return_literal(self):
+		code = 'void fun2(){return 2;}'
+		with self.assertRaises(WrongReturnTypeError):
+			parseCode(code)
+
+	def test_void_return_simple_type(self):
+		code = 'void fun2(){int x; return x;}'
+		with self.assertRaises(WrongReturnTypeError):
+			parseCode(code)
+
+	def test_simple_type_return_void(self):
+		code = 'int fun2(){return;}'
+		with self.assertRaises(WrongReturnTypeError):
+			parseCode(code)
+
+	def test_obj_return_void(self):
+		code = 'class X{}; X fun2(){return;}'
+		with self.assertRaises(WrongReturnTypeError):
+			parseCode(code)
 
 if __name__ == '__main__':
 	unittest.main()
-	#code = 'int fun(int a, char b){} int main(){fun(2, \'a\');}'
+	#code = 'class X{}; X fun2(){return;}'
 	#result =  parseCode(code)
