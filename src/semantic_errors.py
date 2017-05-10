@@ -39,10 +39,10 @@ class NotAVariableError(SemanticError):
 	#def __str__(self):
 	#	return '%s is not a variable' % (self.name)
 	pass 
-	
+
 class LValueNotAVariableError(SemanticError):
-	def __init__(self, id_):
-		self.name = id_.to_name()
+	def __init__(self, name):
+		self.name = name
 
 	def __str__(self):
 		return '%s is not a variable' % (self.name)
@@ -94,20 +94,21 @@ class AssignMismatchTypeError(SemanticError):
 
 #TODO
 class InvalidArgError(SemanticError):
-	def __init__(self, fun_name, param_type, arg_type):
-		self.fun_name = fun_name
-		self.param_type = param_name
-		self.arg_type = arg_type
-
-	def __str__(self):
-		return '%s requires %s, got %s' % (self.fun_name, self.param_type, self.arg_type)
+	#def __init__(self, fun_name, param_type, arg_type):
+	#	self.fun_name = fun_name
+	#	self.param_type = param_type
+	#	self.arg_type = arg_type
+	#
+	#def __str__(self):
+	#	return '%s requires %s, got %s' % (self.fun_name, self.param_type, self.arg_type)
+	pass
 
 class UnknownTypeError(SemanticError):
 	pass
 
 class NotCompatibileTypeInExpressionError(SemanticError):
-	def __init__(self, id_):
-		self.name = id_.to_name()
+	def __init__(self, name):
+		self.name = name
 
 	def __str__(self):
 		return 'Cannot use object of type ' % (self.name)

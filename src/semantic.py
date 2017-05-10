@@ -27,99 +27,182 @@ class Semantic:
 	def previous_env(self):
 		self.current_env = self.current_env.parent
 
+	#gets identifier and returns entity if declared, else None
 	def check_if_declared_variable(self, identifier):
 		if not self.check_syntax:
 			return
 		return self.current_env.find(identifier.name)
 
+	#gets identifier and class name and returns entity if variable is member of class, else None
 	def check_if_part_of_class(self, var, class_name):
 		class_ = self.global_env.find_local(class_name)
 		class_env = class_.struct.env
 		if class_env:
 			return class_env.find_local(var)
 
-	#c.b.a
-	def check_id(self, id_):
-		if not self.check_syntax:
-			return
-		#GOT ID
-		if isinstance(id_, Id):
-			parent, child = id_.parent, id_.child
-			#CHECK IF OBJECT VISIBLE
-			var = self.check_if_declared_variable(parent)
-			while isinstance(id_, Id):
-				#if var.type_ != EntityType.Var:
-				#	raise NotAVariableError(parent)
-				#if var.struct.type_ != Identifier:
-				#	raise NotAnObjectError 
-				to_check = id_ = id_.child
-				#STILL NESTED ID
-				if isinstance(id_, Id):
-					to_check = id_.parent
-				to_check = to_check.name
-				var_class = var.struct.type_.name
-				#CHECK IF MEMBER
-				var = self.check_if_part_of_class(to_check, var_class)
-				if not var:
-					raise NotAClassMemberError(to_check, var_class)
-			return var
-		#GOT IDENTIFIER
-		else:
-			var = self.check_if_declared_variable(id_)
-			if not var:
-				raise NotDeclaredVariableError(id_.name)
-			return var
 
-	def check_funcall(self, funcall):
+	@staticmethod
+	def get_var_class_name(variable):
+		#TAKES ENTITY AND RETURNS VARIABLE CLASS
+		if not isinstance(variable, Entity) or variable.type_ != EntityType.Var:
+			raise NotAVariableError
+		if not isinstance(variable.struct.type_, Identifier):
+			raise NotAnObjectError
+		return variable.struct.type_.name
+
+	#gets id or identifier and returns entity if exist
+	#raises NotAVariable, NotAnObject, NotDeclaredVariable, NotAClassMember
+	def check_if_valid_id(self, id_):
 		if not self.check_syntax:
 			return
+		if isinstance(id_, Id):
+			variable_to_check = id_.parent
+			variable_entity = self.check_if_declared_variable(variable_to_check)
+			while(isinstance(id_, Id)):
+				variable_class = Semantic.get_var_class_name(variable_entity)
+				variable_to_check = id_ = id_.child
+				if isinstance(id_, Id):
+					variable_to_check = id_.parent
+				variable_entity = self.check_if_part_of_class(variable_to_check.name, variable_class)
+				if not variable_entity:
+					raise NotAClassMemberError(variable_to_check.to_name(), variable_class)
+			return variable_entity
+		else:
+			variable_entity = self.check_if_declared_variable(id_)
+			if not variable_entity:
+				raise NotDeclaredVariableError(id_.name)
+			return variable_entity
+	
+	#CAN MERGE THESE 2
+	def check_if_id_is_variable(self, id_):
+		var_entity = self.check_if_valid_id(id_)
+		if not isinstance(var_entity, Entity):
+			raise Exception('Not an entity')
+		if var_entity.type_ != EntityType.Var:
+			raise NotCallableError(id_) #TO NAME
+		return var_entity
+
+	def check_if_id_is_function(self, id_):
+		fun_entity = self.check_if_valid_id(id_)
+		if not isinstance(fun_entity, Entity):
+			raise Exception('Not an entity')
+		if fun_entity.type_ != EntityType.Fun:
+			raise NotCallableError(id_) #TO NAME
+		return fun_entity
+
+	@staticmethod
+	#return dict {param:entity}
+	def get_function_parameters(fun_entity, *, check=True):
+		if check:
+			if not isinstance(fun_entity, Entity):
+				raise Exception('Not an entity')
+			if entity.type_ != EntityType.Fun:
+				raise NotCallableError(id_) #TO NAME
+			return fun_entity
+		return fun_entity.struct.env.dict
+
+	@staticmethod
+	def get_entity_return_type(entity, *, check=True):
+		if check:
+			if not isinstance(entity, Entity):
+				raise Exception("Not an Entity")
+			if entity.type_ == EntityType.Class:
+				raise Exception("Class doesn't have return type")
+		return entity.struct.type_
+
+	@staticmethod
+	def adjust_type(arg):
+		return 'Literal' if isinstance(arg, Literal) else str(type(arg).__name__)
+	
+
+	@staticmethod # VOIDS?
+	def check_two_types_compatibility(first, second):
+		first_name = Semantic.adjust_type(first)
+		second_name = Semantic.adjust_type(second)
+		type_dict = {
+			('TypeSpec', 'TypeSpec') : lambda x,y: True,
+			('Literal', 'TypeSpec') : lambda x,y: True,
+			('Identifier', 'TypeSpec') : lambda x,y : False,
+			('Identifier', 'Identifier') : lambda x,y: x==y,
+			('Literal', 'Literal') : lambda x,y: True,
+			('Identifier', 'Literal') : lambda x,y: False,
+		}
+		if (first_name, second_name) in type_dict:
+			compare = type_dict[(first_name, second_name)]
+			return compare(first, second)
+		if (second_name, first_name) in type_dict:
+			compare = type_dict[(second_name, first_name)]
+			return compare(second, first)
+		raise Exception("Not known types")
+
+	@staticmethod #MAYBE ADDITIONAL CHECK LATER && VOIDS?
+	def throw_invalid_arg_error(id_, param_type, arg_type):
+		param_name, arg_name = Semantic.adjust_type(param_type), Semantic.adjust_type(arg_type)
+		type_dict = {
+			('Identifier', 'TypeSpec') : lambda x,y : (x.to_name(), str(y.value)),
+			('Identifier', 'Identifier') : lambda x,y: (x.to_name(), y.to_name()),
+			('Identifier', 'Literal') : lambda x,y: (x.to_name(), str(y.value)),
+			('TypeSpec', 'Identifier') : lambda x,y : (str(x.value), y.to_name()),
+		}
+		fun_name = id_.to_name()
+		gen_types_str = type_dict[(param_name, arg_name)]
+		param, arg = gen_types_str(param_type, arg_type)
+		raise InvalidArgError(fun_name, param, arg)
+
+
+	def check_if_funcall_arguments_are_valid(self, fun_entity, funcall):
 		id_, args = funcall.name, funcall.args
-		fun_def = self.check_id(id_)
-		if fun_def.type_ != EntityType.Fun:
-			raise NotCallableError(id_)
-		params = fun_def.struct.env.dict
+		params = Semantic.get_function_parameters(fun_entity, check=False)
 		if len(params) != len(args):
 			raise WrongNumberOfArgsError(id_, len(params), len(args))
-		for arg, param in zip(args, params.values()):
-			#BOTH IDENTIFIERS
-			if isinstance(arg, Identifier) or isinstance(arg, Id):
-				arg_decl = self.check_id(arg)
-				#CHECK IF NOT FUN OR CLASS
-				if arg_decl.type_ != EntityType.Var:
-					#raise NotAVariableError(arg)
-					raise NotAVariableError
-				arg_type = arg_decl.struct.type_
-				param_type = param.struct.type_
-				#BOTH OBJECTS 
-				if isinstance(param_type, Identifier) \
-				  and isinstance(arg_type, Identifier) and arg_type != param_type:
-					raise InvalidArgError(id_.to_name(), param_type.to_name(), arg_type.to_name())
-				if type(param_type) != type(arg_type):
-					#raise InvalidArgError(id_.to_name(), )
-					raise InvalidArgError #TODO
-			#ARG IS LITERAL
-			else:
-				if isinstance(param.struct.type_, Identifier):
-					raise InvalidArgError #TODO
+		for arg, param_entity in zip(args, params.values()):
+			param_type = Semantic.get_entity_return_type(param_entity, check=False)
+			if isinstance(arg, Identifier) or isinstance(arg, Id): #fun(x)
+				arg_entity = self.check_if_id_is_variable(arg)
+				arg_type = Semantic.get_entity_return_type(arg_entity, check=False)
+				if not Semantic.check_two_types_compatibility(arg_type, param_type):
+					Semantic.throw_invalid_arg_error(id_, param_type, arg_type)
+			else: #fun(2)
+				if not Semantic.check_two_types_compatibility(arg, param_type):
+					Semantic.throw_invalid_arg_error(id_, param_type, arg)
+
+	#used by parser, gets funcall
+	#raises ...
+	def check_if_valid_funcall(self, funcall):
+		if not self.check_syntax:
+			return
+		fun_id = funcall.name
+		fun_entity = self.check_if_id_is_function(fun_id)
+		self.check_if_funcall_arguments_are_valid(fun_entity, funcall)
+	
+
+
+
+
+
+
+
+
+
 
 	def check_if_simple_type(self, var):
 		if not self.check_syntax:
 			return
 		if var.type_ != EntityType.Var:
-			raise LValueNotAVariableError# TODO CATCH IN PARSER OR SPLIT AEXP
+			raise NotAVariableError('name')# TODO CATCH IN PARSER OR SPLIT AEXP
 		#CHECK IF VAR NOT FUN OR CLASS TODOOO
 		type_ = var.struct.type_
 		if isinstance(type_, Identifier):
-			raise NotCompatibileTypeInExpressionError()
+			raise NotCompatibileTypeInExpressionError('name')	# TODO
 
 	def check_assignment(self, assign):
 		if not self.check_syntax:
 			return
 		id_, value = assign.name, assign.value
-		var = self.check_id(id_)
+		var = self.check_if_valid_id(id_)
 		if var.type_ != EntityType.Var:
 			#raise LValueNotAVariableError(id_)
-			raise LValueNotAVariableError
+			raise LValueNotAVariableError(id_.to_name())
 		l_type = var.struct.type_
 		r_type = self.get_r_value_type(value)
 		self.compare_types(l_type, r_type)
@@ -147,14 +230,14 @@ class Semantic:
 		if isinstance(value, Bexp):
 			return TypeSpec('bool')
 		if type(value) in [Id, Identifier]:
-			var = self.check_id(value)
+			var = self.check_if_valid_id(value)
 			if var.type_ != EntityType.Var:
 				raise NotAVariableError
 			type_ = var.struct.type_
 			return type_
 		if isinstance(value, FunCall):
 			name = value.name
-			fun = self.check_id(name)
+			fun = self.check_if_valid_id(name)
 			if fun.type_ != EntityType.Fun:
 				raise NotCallableError
 			type_ = fun.struct.type_
@@ -258,7 +341,7 @@ class Semantic:
 				fun_name = env.name
 				return_var = jump.returnable
 				if isinstance(return_var, Identifier) or isinstance(return_var, Id):
-					return_var = self.check_id(return_var)
+					return_var = self.check_if_valid_id(return_var)
 					if return_var.type_ != EntityType.Var:
 						raise NotAVariableError
 					return_var = return_var.struct.type_

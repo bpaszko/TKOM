@@ -22,6 +22,14 @@ class SyntaxError(Exception):
 class InvalidSyntaxError(SyntaxError):
     pass
 
+class ParseSemanticError(SemanticError):
+    def __init__(self, line, prev_exception):
+        self.line = line
+        self.prev_exception = prev_exception
+
+    def __str__(self):
+        return 'On line: %d, %s' % (self.line, self.prev_exception)
+
 class Parser():
     def __init__(self, lexer, semantic=None):
         self.lexer = lexer
@@ -38,14 +46,12 @@ class Parser():
         if self.current_token.type == token_type:
             self.current_token = self.get_next_token()
         else:
-            raise InvalidSyntaxError("Expected %s, got %s" % (token_type, self.current_token))
+            raise InvalidSyntaxError("Expected %s, got %s, line: %s" 
+                % (token_type.name, self.current_token.value, self.current_token.line))
 
     def revert(self, pos):
         self.lexer.revert(pos)
         self.current_token = self.lexer.current_tokens[pos-1]
-
-    def peek_token(self, offset=1):
-        return self.lexer.peek_token(offset-1)
 
 
     def parseLiteral(self):
@@ -59,14 +65,9 @@ class Parser():
         if self.current_token.type == TokenType.FloatNum:
             self.eat(TokenType.FloatNum)
             return FloatNum(token.value)
-        raise InvalidSyntaxError('Expected literal')
+        raise InvalidSyntaxError("Expected literal, got %s, line: %s" 
+                % (self.current_token.value, self.current_token.line))
 
-    def parseIdSequence(self): #HARD SELECTION?
-        parent = Identifier(self.current_token.value)
-        self.eat(TokenType.Identifier)
-        self.eat(TokenType.Dot)
-        child = self.parseId()
-        return Id(parent=parent, child=child)
 
     def parseIdentifier(self):
         token = self.current_token
@@ -75,12 +76,11 @@ class Parser():
 
     def parseId(self):
         token = self.current_token
-        #if self.current_token.type == TokenType.Identifier:
-        if self.peek_token().type == TokenType.Dot:
-            return self.parseIdSequence()
-        self.eat(TokenType.Identifier)
-        return Identifier(token.value)
-
+        ident = self.parseIdentifier()
+        if self.current_token.type == TokenType.Dot:
+            self.eat(TokenType.Dot)
+            return Id(parent=ident, child=self.parseId())
+        return ident
 
 
     # arithmetic-expression
@@ -115,7 +115,7 @@ class Parser():
             return self.parseLiteral()
         if self.current_token.type == TokenType.Identifier:
             id_ = self.parseId()
-            self.semantic.check_if_simple_type(self.semantic.check_id(id_))
+            self.semantic.check_if_simple_type(self.semantic.check_if_valid_id(id_))
             return id_
         token = self.current_token
         if token.type == TokenType.OpenParanthesis:
@@ -127,7 +127,6 @@ class Parser():
 
     def aexp(self):
         return self.parseAExp()
-
 
 
 
@@ -176,7 +175,7 @@ class Parser():
     def parseOperand(self):
         if self.current_token.type == TokenType.Identifier:
             id_ = self.parseId()
-            self.semantic.check_if_simple_type(self.semantic.check_id(id_))
+            self.semantic.check_if_simple_type(self.semantic.check_if_valid_id(id_))
             return id_
         if self.current_token.type in literals_types:
             return self.parseLiteral()
@@ -193,13 +192,12 @@ class Parser():
         return self.parseBExp()
 
 
-
-
     # STATEMENTS
     def parseStmt(self):
         if self.current_token.type == TokenType.LBracket:
             return self.parseCompoundStmt()
         return self.parseNonCompoundStmt()
+
 
     def parseNonCompoundStmt(self):
         if self.current_token.type in [TokenType.Return, TokenType.Continue, TokenType.Break]:
@@ -215,10 +213,8 @@ class Parser():
         if node:
             return node
 
-        #try:
         return self.parseExpStmt()
-        #except:
-        #    raise InvalidSyntaxError("Can't parse statement")
+
 
     def try_to_parse_decl(self):
         if self.current_token.value in type_specifiers:
@@ -238,21 +234,53 @@ class Parser():
                 return decl
 
 
-
     def parseCompoundStmt(self):
         self.semantic.set_new_env(env_type=EnvType.Compound)
         nodes = []
         self.eat(TokenType.LBracket)
         while(self.current_token.type != TokenType.RBracket):
-            nodes.append(self.parseNonCompoundStmt()) #NOT COMPOUND
+            nodes.append(self.parseNonCompoundStmt())
         self.eat(TokenType.RBracket)
         self.semantic.previous_env()
         return CompoundStmt(nodes)
 
+
     def parseExpStmt(self):
-        node = self.parseExp()
-        self.eat(TokenType.SemiColon)
-        return node 
+        node = self.try_to_parse_exp(self.parseFunctionCall)
+        if node:
+            self.eat(TokenType.SemiColon)
+            return node
+        node = self.try_to_parse_exp(self.parseAssignment)
+        if node:
+            self.eat(TokenType.SemiColon)
+            return node
+        node = self.try_to_parse_exp(self.parseAExp)
+        if node:
+            self.eat(TokenType.SemiColon)
+            return node
+        node = self.try_to_parse_exp(self.parseBExp)
+        if node:
+            self.eat(TokenType.SemiColon)
+            return node
+
+        raise InvalidSyntaxError("Expected expression, got: %s, line: %d" 
+                % (self.current_token.value, self.current_token.line))
+
+
+    def try_to_parse_exp(self, fun):
+        try:
+            pos = self.lexer.pos
+            node = fun()
+            if self.current_token.type != TokenType.SemiColon:
+                self.revert(pos)
+                return None    
+        except InvalidSyntaxError:
+            self.revert(pos)
+            return None
+        else:
+            return node
+
+
 
     def parseDeclStmt(self, param):
         node = self.parseDecl(param)
@@ -285,7 +313,7 @@ class Parser():
         self.eat(TokenType.LessThan)
         if self.current_token.type == TokenType.Identifier:
             node = RelopBexp(left=left, op='<', right=self.parseIdentifier())
-            self.semantic.check_id(node)
+            self.semantic.check_if_valid_id(node) # NOT SURE!!!!!!!!!!!!!!! TODODDODODO
         else:
             node = RelopBexp(left=left, op='<', right=self.parseLiteral())
         self.semantic.check_for_condition(node, decl)
@@ -359,131 +387,39 @@ class Parser():
             return self.parseId()
         if self.current_token.type in literals_types:
             return self.parseLiteral()
-        raise InvalidSyntaxError("Expected returnable") 
-
-
-
-
-    # EXPRESSIONS  - USED ONLY IN EXPSTMTS
-    def parseExp(self): # TRY TO PARSE !!!!!!!!!! TODO
-        node = self.try_to_parse(self.parseFunctionCall)
-        if node:
-            return node
-        node = self.try_to_parse(self.parseAssignment)
-        if node:
-            return node
-        node = self.try_to_parse(self.parseAExp)
-        if node:
-            return node
-        node = self.try_to_parse(self.parseBExp)
-        if node:
-            return node
-        #if self.checkIfFunCall():
-        #    return self.parseFunctionCall()
-        #if self.checkIfAssignmentExp():
-        #    return self.parseAssignment()
-        #if self.checkIfAExp():
-        #    return self.parseAExp()
-        #if self.checkIfBExp():
-        #    return self.parseBExp()
-        raise InvalidSyntaxError("Expected expression")
-
-    def try_to_parse(self, fun):
-        try:
-            pos = self.lexer.pos
-            node = fun()
-        except InvalidSyntaxError:
-            self.revert(pos)
-            return None
-        else:
-            return node
-
-
-    def checkIfNextTokensCorrect(self, begin, allowed, ending):
-        if self.current_token.type not in begin:
-            return False
-        i = 1
-        try:
-            next_token = self.peek_token(i)
-            while next_token.type not in ending:
-                if next_token.type not in allowed:
-                    return False
-                i += 1
-                next_token = self.peek_token(i)
-            return True
-        except EndOfInputError:
-            return False
-
-    def checkIfFunCall(self):
-        begin = [TokenType.Identifier]
-        allowed = [TokenType.Identifier, TokenType.Dot]
-        ending = [TokenType.OpenParanthesis]
-        return self.checkIfNextTokensCorrect(begin, allowed, ending)
-
-    def checkIfAssignmentExp(self):
-        begin = [TokenType.Identifier]
-        allowed = [TokenType.Identifier, TokenType.Dot]
-        ending = [TokenType.Assign]
-        return self.checkIfNextTokensCorrect(begin, allowed, ending)
-
-    def checkIfAExp(self):
-        begin = [TokenType.Identifier, TokenType.OpenParanthesis]
-        begin += literals_types
-        allowed = list(begin)
-        allowed += [TokenType.CloseParanthesis, TokenType.Plus, TokenType.Minus, 
-            TokenType.Slash, TokenType.Asterix, TokenType.Dot]
-        ending = [TokenType.SemiColon]
-        return self.checkIfNextTokensCorrect(begin, allowed, ending)
-
-    def checkIfBExp(self):
-        begin = [TokenType.Identifier, TokenType.OpenParanthesis,
-            TokenType.Not, TokenType.False_, TokenType.True_]
-        begin += literals_types
-        allowed = list(begin)
-        allowed += [TokenType.And, TokenType.CloseParanthesis, TokenType.Or, TokenType.LessOrEqual,
-            TokenType.Equals, TokenType.Differs, TokenType.GreaterOrEqual, TokenType.GreaterThan,
-            TokenType.LessThan, TokenType.Dot]
-        ending = [TokenType.SemiColon]
-        return self.checkIfNextTokensCorrect(begin, allowed, ending)
-
-    def checkIfId(self):
-        begin = [TokenType.Identifier]
-        allowed = [TokenType.Identifier, TokenType.Dot]
-        ending = [TokenType.SemiColon]
-        return self.checkIfNextTokensCorrect(begin, allowed, ending)
-
-    def checkIfLiteral(self):
-        begin = literals_types
-        allowed = []
-        ending = [TokenType.SemiColon]
-        return self.checkIfNextTokensCorrect(begin, allowed, ending)
+        raise InvalidSyntaxError("Expected returnable, got %s, line: %d" 
+                % (self.current_token.value, self.current_token.line))
 
     def parseAssignment(self):
         id = self.parseId()
-        if self.current_token.type == TokenType.Assign:
-            init = self.parseInitialization()
-            node = AssignExp(id, init)
-            self.semantic.check_assignment(node)
-            return node
-        raise InvalidSyntaxError()
+        init = self.parseInitialization()
+        node = AssignExp(id, init)
+        self.semantic.check_assignment(node)
+        return node
 
     def parseInitialization(self):
         self.eat(TokenType.Assign)
         return self.parseRValue()
 
     def parseRValue(self):  # TRY TO PARSE
-        if self.checkIfFunCall():
-            return self.parseFunctionCall()
-        if self.checkIfId():
-            return self.parseId()
-        if self.checkIfLiteral():
-            return self.parseLiteral()
-        if self.checkIfAExp():
-            return self.parseAExp()
-        if self.checkIfBExp():
-            return self.parseBExp()
-
-        raise InvalidSyntaxError('Expected r-value')
+        node = self.try_to_parse_exp(self.parseId)
+        if node:
+            return node
+        node = self.try_to_parse_exp(self.parseLiteral)
+        if node:
+            return node
+        node = self.try_to_parse_exp(self.parseFunctionCall)
+        if node:
+            return node
+        node = self.try_to_parse_exp(self.parseAExp)
+        if node:
+            return node
+        node = self.try_to_parse_exp(self.parseBExp)
+        if node:
+            return node
+ 
+        raise InvalidSyntaxError("Expected r-value, got %s, line: %d" 
+                % (self.current_token.value, self.current_token.line))
 
     def parseDecl(self, param):
         self.semantic.check_parameter(param)
@@ -504,16 +440,20 @@ class Parser():
             return TypeSpec(token.value)
         if self.current_token.type == TokenType.Identifier:
             return self.parseIdentifier()
-        raise InvalidSyntaxError("Expected type spec")
+        raise InvalidSyntaxError("Expected type specifier, got %s, line: %d" 
+                % (self.current_token.value, self.current_token.line))
 
 
-    def parseArgList(self): #CHECK FOR ERROR IN ARG LIST
+    def parseArgList(self): 
         args = []
         while self.current_token.type != TokenType.CloseParanthesis:
             if self.current_token.type == TokenType.Identifier:
                 args.append(self.parseId())
             elif self.current_token.type in literals_types:
                 args.append(self.parseLiteral())
+            else:
+                raise InvalidSyntaxError("Expected argument, got %s, line: %d" 
+                    % (self.current_token.value, self.current_token.line))
             if self.current_token.type == TokenType.CloseParanthesis:
                 break
             self.eat(TokenType.Comma)
@@ -525,23 +465,19 @@ class Parser():
         args = self.parseArgList()
         self.eat(TokenType.CloseParanthesis)
         node = FunCall(name, args)
-        self.semantic.check_funcall(node)
+        self.semantic.check_if_valid_funcall(node)
         return node
 
 
-    def stmt_parse(self):
-        return self.parseStmt()
 
 
-
-
-
-    def parseParameterList(self): #OK
+    def parseParameterList(self):
         parameters = []
         while self.current_token.type != TokenType.CloseParanthesis:
             if self.current_token.value not in type_specifiers and \
               self.current_token.type != TokenType.Identifier:
-                raise InvalidSyntaxError("Expected parameter in function def")
+                raise InvalidSyntaxError("Expected parameter, got %s, line: %d" 
+                    % (self.current_token.value, self.current_token.line))
             param = self.parseParameter()
             self.semantic.check_parameter(param)
             parameters.append(param)
@@ -553,8 +489,8 @@ class Parser():
     def parseFunctionDefinition(self, param):
         self.semantic.set_new_env(env_type=EnvType.Fun)
         type_, name = param.type, param.name
-        self.semantic.check_fun_identifier(name)
         self.eat(TokenType.OpenParanthesis)
+        self.semantic.check_fun_identifier(name)
         params = self.parseParameterList()
         self.semantic.add_function_definition(type_, name)
         self.eat(TokenType.CloseParanthesis)
@@ -563,8 +499,6 @@ class Parser():
         return node
 
     def parseMemberDeclaration(self):
-        #CHECK IF FUN
-        res = None
         param = self.parseParameter()
         if self.current_token.type == TokenType.OpenParanthesis:
             return self.parseFunctionDefinition(param)
@@ -572,17 +506,6 @@ class Parser():
         decl = self.parseDeclStmt(param)
         self.semantic.add_declaration(decl, True)
         return decl
-        """
-        try:
-            res = (self.peek_token(2).type == TokenType.OpenParanthesis)
-        except EndOfInputError:
-            pass
-        else:
-            if res:
-                return self.parseFunctionDefinition()
-        decl = self.parseDeclStmt()
-        self.semantic.add_declaration(decl, True)
-        return decl"""
 
     def parseMembersDeclarations(self):
         access_members = []
@@ -616,7 +539,6 @@ class Parser():
         name = self.parseIdentifier()
         self.semantic.check_identifier(name)
         self.semantic.add_class(name)
-        self.semantic.name_env(name)    #POLACZYC
         self.eat(TokenType.LBracket)
         member_spec = self.parseMemberSpecification()
         self.eat(TokenType.RBracket)
@@ -629,8 +551,9 @@ class Parser():
         if self.current_token.type == TokenType.Class:
             return self.parseClassSpecifier()
         if self.current_token.value not in type_specifiers and self.current_token.type != TokenType.Identifier:
-            raise InvalidSyntaxError('Expected class or type specifier')
-        #CHECK IF FUN
+            raise InvalidSyntaxError("Expected class or type spec, got %s, line: %d" 
+                % (self.current_token.value, self.current_token.line))
+
         param = self.parseParameter()
         if self.current_token.type == TokenType.OpenParanthesis:
             return self.parseFunctionDefinition(param)
@@ -640,15 +563,14 @@ class Parser():
         return decl
 
     def parseProgram(self):
+        #try:
         nodes = []
         while(self.current_token.type != TokenType.EOF):
             node = self.parseDefinition()
-            if node:
-                nodes.append(node)
-                continue
-            else:
-                raise InvalidSyntaxError("Can't parse program") #TO REMOVE!!
+            nodes.append(node)
         return Program(nodes)
+        #except SemanticError as e:
+        #    raise ParseSemanticError(self.current_token.line, e)
 
 
 def print_env(env, tb=0):
@@ -668,7 +590,15 @@ if __name__ == '__main__':
     lexer = Lexer(stream)
     semantic = Semantic(True)
     parser = Parser(lexer, semantic)
-    result = parser.parseProgram()
-    print(result)
-    print('\n\n')
-    print_env(parser.semantic.global_env)
+    try:
+        result = parser.parseProgram()
+    except SemanticError as e:
+        print(e.__class__.__name__)
+        print(e)
+    else:
+        print(result)
+
+    #result = parser.parseProgram()
+
+    #print('\n\n')
+    #print_env(parser.semantic.global_env)

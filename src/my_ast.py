@@ -6,7 +6,17 @@ class Aexp:
     pass
 
 class Literal(Aexp):
-    pass
+    def __init__(self, value):
+        self.value = int(value)
+
+    def __eq__(self, other):
+        return self.value == other.value
+
+    def __repr__(self):
+        return 'Literal(%s)' % self.value
+
+    def __hash__(self):
+        return hash(self.value)
 
 class IntNum(Literal):  # IntAexp
     def __init__(self, value):
