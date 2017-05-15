@@ -333,6 +333,10 @@ class Semantic:
 		type_spec, name = param.type, param.name.name
 		if self.current_env.find_local(name):
 			raise AlreadyDeclaredError(name)
+		parent = self.current_env.parent
+		if parent and parent.env_type == EnvType.Fun:
+			if parent.find_local(name):
+				raise AlreadyDeclaredError(name)
 
 	def add_parameter(self, param, access='public'):
 		self.check_parameter(param)
