@@ -1,8 +1,12 @@
 if __name__ == '__main__':
-    from my_ast import *
+	from my_ast import *
+	from my_env import *
 elif __package__:
-    from .my_ast import *
-
+	from .my_ast import *
+	from .my_env import *
+else:
+	from my_ast import *
+	from my_env import *
 
 class PythonGenerator:
 	def __init__(self, path='pycode.py'):
@@ -20,38 +24,43 @@ class PythonGenerator:
 	def decrease(self):
 		self.tabs -= 1
 
-	def create_class(self, id_):
-		code = self.tabs * '\t' + 'class ' + id_.to_python() + ':\n'
+	def create_class(self, id_, env = None):
+		code = self.tabs * '\t' + 'class ' + id_.to_python(env) + ':\n'
 		self.code += code
 		self.tabs += 1
 
-	def create_function(self, id_, params):
-		code = self.tabs * '\t' + 'def ' + id_.to_python() + '('
+	def create_function(self, id_, params, env):
+		code = self.tabs * '\t' + 'def ' + id_.to_python(None) + '('
+		if env.parent.env_type == EnvType.Class:
+			code += 'self'
+			if params: 
+				code += ', '
+
 		for i, param in enumerate(params):
-			code += param.to_python()
+			code += param.to_python(None)
 			if i < len(params) - 1:
 				code += ', '
 		code += '):\n'
 		self.code += code
 		self.tabs += 1 
 
-	def create_while_loop(self, bexp):
-		code = '\t' * self.tabs + 'while ' + bexp.to_python() + ':\n'
+	def create_while_loop(self, bexp, env):
+		code = '\t' * self.tabs + 'while ' + bexp.to_python(env) + ':\n'
 		self.code += code
 		self.tabs += 1
 
-	def create_for_loop(self, init, cond, increment):
-		var = init.parameter.name.to_python()
-		var_value = init.value.to_python()
-		cond_var = cond.right.to_python()
-		inc_var = increment.value.right.to_python()
+	def create_for_loop(self, init, cond, increment, env):
+		var = init.parameter.name.to_python(env)
+		var_value = init.value.to_python(env)
+		cond_var = cond.right.to_python(env)
+		inc_var = increment.value.right.to_python(env)
 		code = '\t' * self.tabs + 'for ' + var + ' in range(' + var_value + \
 			 ',' + cond_var + ',' + inc_var + '):\n'
 		self.code += code
 		self.tabs += 1
 
-	def create_if_stmt(self, bexp):
-		code = '\t' * self.tabs + 'if ' + bexp.to_python() + ':\n'
+	def create_if_stmt(self, bexp, env):
+		code = '\t' * self.tabs + 'if ' + bexp.to_python(env) + ':\n'
 		self.code += code
 		self.tabs += 1
 
@@ -60,10 +69,14 @@ class PythonGenerator:
 		self.code += code
 		self.tabs += 1
 
-	def create_jump_stmt(self, jump_stmt):
-		code = '\t' * self.tabs + jump_stmt.to_python() + '\n'
+	def create_jump_stmt(self, jump_stmt, env):
+		code = '\t' * self.tabs + jump_stmt.to_python(env) + '\n'
 		self.code += code
 
+	def create_pass(self):
+		self.code += '\t' * self.tabs + 'pass' + '\n'
+
+	"""
 	@staticmethod
 	def get_type(value):
 		if isinstance(value, Id) or isinstance(value, Idenifier):
@@ -76,31 +89,35 @@ class PythonGenerator:
 			return 'Bexp'
 		if isinstance(value, FunCall):
 			return 'Funcall'
-
-	def create_id(self, id_):
-		code = '\t' * self.tabs + id_.to_python() + '\n'
+	"""
+	
+	def create_id(self, id_, env = None):
+		code = '\t' * self.tabs + id_.to_python(env) + '\n'
 		self.code += code
 
-	def create_literal(self, literal):
-		code = '\t' * self.tabs + literal.to_python() + '\n'
+	def create_literal(self, literal, env = None):
+		code = '\t' * self.tabs + literal.to_python(env) + '\n'
 		self.code += code
 
-	def create_funcall(self, funcall):
-		code = '\t' * self.tabs + funcall.to_python() + '\n'
+	def create_funcall(self, funcall, env):
+		code = '\t' * self.tabs + funcall.to_python(env) + '\n'
 		self.code += code
 
-	def create_aexp(self, aexp):
-		code = '\t' * self.tabs + aexp.to_python() + '\n'
+	def create_aexp(self, aexp, env):
+		code = '\t' * self.tabs + aexp.to_python(env) + '\n'
 		self.code += code
 
-	def create_bexp(self, bexp):
-		code = '\t' * self.tabs + bexp.to_python() + '\n'
+	def create_bexp(self, bexp, env):
+		code = '\t' * self.tabs + bexp.to_python(env) + '\n'
 		self.code += code
 
-	def create_declaration(self, decl):
-		code = '\t' * self.tabs + decl.to_python() + '\n'
+	def create_declaration(self, decl, env):
+		code = '\t' * self.tabs + decl.to_python(env) + '\n'
 		self.code += code
 
-	def create_assignment(self, assignment):
-		code = '\t' * self.tabs + assignment.to_python() + '\n'
+	def create_assignment(self, assignment, env):
+		code = '\t' * self.tabs + assignment.to_python(env) + '\n'
 		self.code += code
+
+	def create_main_call(self):
+		self.code += 'print(main())'

@@ -64,6 +64,8 @@ token_exprs = [
     ('\n', None),
     (r'[ \t]+', None),
     (r'//[^\n]*', None),
+    (r'std::cout[^\n]*', None),
+    (r'#include[^\n]*', None),
     (r'int(?![A-Za-z\d])', TokenType.Int),
     (r'long(?![A-Za-z\d])', TokenType.Long),
     (r'float(?![A-Za-z\d])', TokenType.Float),
@@ -168,8 +170,14 @@ class Lexer:
         if not next_line:
             self.current_tokens += [Token(TokenType.EOF, 'EOF', self.current_line)]
             return
-        self.current_tokens += self.lex_line(next_line)
-        self.current_line += 1
+        #self.current_tokens += self.lex_line(next_line)
+        tokens = self.lex_line(next_line)
+        if not tokens:
+            self.current_line += 1
+            self.load_more_tokens()
+        else:
+            self.current_tokens += tokens
+            self.current_line += 1
 
 
     def lex_line(self, characters):

@@ -11,8 +11,7 @@ if __name__ == '__main__':
 
 def parseCode(code):
 	stream = io.StringIO(code)
-	lexer = Lexer(stream)
-	parser = Parser(lexer, Semantic(True))
+	parser = Parser(stream, semantic=True)
 	return parser.parseProgram()
 
 class TestSemantic(unittest.TestCase):
@@ -301,44 +300,44 @@ class TestSemantic(unittest.TestCase):
 
 
 	def test_simple_fun_call_in_nested_objects(self):
-		code = 'class A{int fun(){}}; class B{A a;}; class C{B b;}; \
+		code = 'class A{public: int fun(){}}; class B{public: A a;}; class C{public: B b;}; \
 			int main(){C c; c.b.a.fun();}'
 		result =  parseCode(code)
 		self.assertTrue(result)
 
 	def test_fun_call_with_args_in_nested_objects(self):
-		code = 'class X{}; class A{int fun(int a, X b){}}; class B{A a;}; class C{B b;}; \
-			int main(){int x; X y; C c; c.b.a.fun(x, y);}'
+		code = 'class X{}; class A{public: int fun(int a, X b){}}; class B{public: A a;}; \
+			class C{public: B b;}; int main(){int x; X y; C c; c.b.a.fun(x, y);}'
 		result =  parseCode(code)
 		self.assertTrue(result)
 
 	def test_fun_call_with_literal_args_in_nested_objects(self):
-		code = 'class A{int fun(int a, char b){}}; class B{A a;}; class C{B b;}; \
-			int main(){C c; c.b.a.fun(2, \'a\');}'
+		code = 'class A{public: int fun(int a, char b){}}; class B{public: A a;}; \
+			class C{public: B b;}; int main(){C c; c.b.a.fun(2, \'a\');}'
 		result =  parseCode(code)
 		self.assertTrue(result)
 
 	def test_fun_call_with_too_small_number_of_args_in_nested_objects(self):
-		code = 'class A{int fun(int a){}}; class B{A a;}; class C{B b;}; \
-			int main(){C c; c.b.a.fun();}'
+		code = 'class A{public: int fun(int a){}}; class B{public: A a;}; \
+			class C{public: B b;}; int main(){C c; c.b.a.fun();}'
 		with self.assertRaises(WrongNumberOfArgsError):
 			parseCode(code)
 
 	def test_fun_call_fun_with_too_large_number_of_args_in_nested_objects(self):
-		code = 'class A{int fun(int a){}}; class B{A a;}; class C{B b;}; \
-			int main(){int x; int y; C c; c.b.a.fun(x, y);}'
+		code = 'class A{public: int fun(int a){}}; class B{public: A a;}; \
+			class C{public: B b;}; int main(){int x; int y; C c; c.b.a.fun(x, y);}'
 		with self.assertRaises(WrongNumberOfArgsError):
 			parseCode(code)
 
 	def test_fun_call_fun_with_wrong_args_v1_in_nested_objects(self):
-		code = 'class X{}; class A{int fun(int a, X b){}}; class B{A a;}; class C{B b;}; \
-			int main(){X y; C c; c.b.a.fun(2, 2);}'
+		code = 'class X{}; class A{public: int fun(int a, X b){}}; class B{public: A a;}; \
+			class C{public: B b;}; int main(){X y; C c; c.b.a.fun(2, 2);}'
 		with self.assertRaises(InvalidArgError):
 			parseCode(code)
 
 	def test_fun_call_fun_with_wrong_args_v2_in_nested_objects(self):
-		code = 'class X{}; class A{int fun(int a, X b){}}; class B{A a;}; class C{B b;}; \
-			int main(){X y; C c; c.b.a.fun(y, y);}'
+		code = 'class X{}; class A{public: int fun(int a, X b){}}; class B{public: A a;}; \
+			class C{public: B b;}; int main(){X y; C c; c.b.a.fun(y, y);}'
 		with self.assertRaises(InvalidArgError):
 			parseCode(code)
 
@@ -348,20 +347,20 @@ class TestSemantic(unittest.TestCase):
 			parseCode(code)
 
 	def test_call_variable_with_args_in_nested_objects(self):
-		code = 'class A{int x;}; class B{A a;}; class C{B b;}; \
+		code = 'class A{public: int x;}; class B{public: A a;}; class C{public: B b;}; \
 			int main(){int x; x(2);}'
 		with self.assertRaises(NotCallableError):
 			parseCode(code)
 
 	def test_call_from_deeper_nested_level_in_nested_objects(self):
-		code = 'class A{int fun(){}}; class B{A a;}; class C{B b;}; C c;\
-			int main(){if(true){if(false){c.b.a.fun();}}}'
+		code = 'class A{public: int fun(){}}; class B{public: A a;}; class C{public: B b;}; \
+			C c; int main(){if(true){if(false){c.b.a.fun();}}}'
 		result =  parseCode(code)
 		self.assertTrue(result)
 
 	def test_call_with_override_function_in_nested_objects(self):
-		code = 'class A{int fun(){}}; class B{A a;}; class C{B b;}; C c;\
-			int main(){int fun; if(false){if(true){c.b.a.fun();}}}'
+		code = 'class A{public: int fun(){}}; class B{public: A a;}; class C{public: B b;}; \
+			C c; int main(){int fun; if(false){if(true){c.b.a.fun();}}}'
 		result =  parseCode(code)
 		self.assertTrue(result)
 
@@ -371,20 +370,20 @@ class TestSemantic(unittest.TestCase):
 			parseCode(code)
 
 	def test_call_not_class_member_in_nested_objects(self):
-		code = 'class A{}; class B{A a;}; class C{B b;}; C c;\
+		code = 'class A{}; class B{public: A a;}; class C{public: B b;}; C c;\
 			int main(){C c; c.b.a.fun();}'
 		with self.assertRaises(NotAClassMemberError):
 			parseCode(code)
 
 	def test_nested_call_with_a_simple_type_in_path(self):
-		code = 'class A{int fun(){}}; class B{A a; int ax;}; class C{B b;}; C c;\
-			int main(){C c; c.b.ax.fun();}'
+		code = 'class A{public: int fun(){}}; class B{public: A a; int ax;}; \
+		class C{public: B b;}; C c;	int main(){C c; c.b.ax.fun();}'
 		with self.assertRaises(NotAnObjectError):
 			parseCode(code)
 
 	def test_nested_call_with_a_fun_in_path(self):
-		code = 'class A{int fun(){}}; class B{A a; int fun2(){}}; class C{B b;}; C c;\
-			int main(){C c; c.b.fun2.fun();}'
+		code = 'class A{public: int fun(){}}; class B{public: A a; int fun2(){}}; \
+			class C{public: B b;}; C c; int main(){C c; c.b.fun2.fun();}'
 		with self.assertRaises(NotAnObjectError):
 			parseCode(code)
 
@@ -400,7 +399,7 @@ class TestSemantic(unittest.TestCase):
 		self.assertTrue(result)
 
 	def test_aexp_with_nested_variable(self):
-		code = 'class A{int var;}; class B{A a;}; class C{B b;}; \
+		code = 'class A{public: int var;}; class B{public: A a;}; class C{public: B b;}; \
 			int main(){C c; 2+c.b.a.var;}'
 		result =  parseCode(code)
 		self.assertTrue(result)
@@ -416,7 +415,7 @@ class TestSemantic(unittest.TestCase):
 			parseCode(code)
 
 	def test_aexp_with_member_fun(self):
-		code = 'class A{int fun(){}}; class B{A a;}; class C{B b;}; \
+		code = 'class A{public: int fun(){}}; class B{public: A a;}; class C{public: B b;}; \
 			int main(){C c; 2+c.b.a.fun;}'
 		with self.assertRaises(NotAVariableError):
 			parseCode(code)
@@ -427,7 +426,7 @@ class TestSemantic(unittest.TestCase):
 			parseCode(code)
 
 	def test_aexp_with_nested_object(self):
-		code = 'class A{}; class B{A a;}; class C{B b;}; \
+		code = 'class A{}; class B{public: A a;}; class C{public: B b;}; \
 			int main(){C c; 2+c.b.a;}'
 		with self.assertRaises(NotCompatibileTypeInExpressionError):
 			parseCode(code)
@@ -438,7 +437,7 @@ class TestSemantic(unittest.TestCase):
 			parseCode(code)
 
 	def test_aexp_with_not_a_member(self):
-		code = 'class A{}; class B{A a;}; class C{B b;}; \
+		code = 'class A{}; class B{public: A a;}; class C{public: B b;}; \
 			int main(){C c; 2+c.b.a.var;}'
 		with self.assertRaises(NotAClassMemberError):
 			parseCode(code)
@@ -456,7 +455,7 @@ class TestSemantic(unittest.TestCase):
 		self.assertTrue(result)
 
 	def test_bexp_with_nested_variable(self):
-		code = 'class A{int var;}; class B{A a;}; class C{B b;}; \
+		code = 'class A{public: int var;}; class B{public: A a;}; class C{public: B b;}; \
 			int main(){C c; 2 < c.b.a.var;}'
 		result =  parseCode(code)
 		self.assertTrue(result)
@@ -472,7 +471,7 @@ class TestSemantic(unittest.TestCase):
 			parseCode(code)
 
 	def test_bexp_with_member_fun(self):
-		code = 'class A{int fun(){}}; class B{A a;}; class C{B b;}; \
+		code = 'class A{public: int fun(){}}; class B{public: A a;}; class C{public: B b;}; \
 			int main(){C c; 2 < c.b.a.fun;}'
 		with self.assertRaises(NotAVariableError):
 			parseCode(code)
@@ -483,7 +482,7 @@ class TestSemantic(unittest.TestCase):
 			parseCode(code)
 
 	def test_bexp_with_nested_object(self):
-		code = 'class A{}; class B{A a;}; class C{B b;}; \
+		code = 'class A{}; class B{public: A a;}; class C{public: B b;}; \
 			int main(){C c; 2 < c.b.a;}'
 		with self.assertRaises(NotCompatibileTypeInExpressionError):
 			parseCode(code)
@@ -494,7 +493,7 @@ class TestSemantic(unittest.TestCase):
 			parseCode(code)
 
 	def test_bexp_with_not_a_member(self):
-		code = 'class A{}; class B{A a;}; class C{B b;}; \
+		code = 'class A{}; class B{public: A a;}; class C{public: B b;}; \
 			int main(){C c; 2 < c.b.a.var;}'
 		with self.assertRaises(NotAClassMemberError):
 			parseCode(code)
@@ -518,23 +517,25 @@ class TestSemantic(unittest.TestCase):
 		self.assertTrue(result)
 
 	def test_assign_to_nested_object(self):
-		code = 'class X{}; class Y{X x;}; int main(){Y y; X x; y.x = x;}'
+		code = 'class X{}; class Y{public: X x;}; int main(){Y y; X x; y.x = x;}'
 		result =  parseCode(code)
 		self.assertTrue(result)
 
 	def test_assign_nested_object(self):
-		code = 'class Z{}; class Y{Z z;}; class X{Y y;}; \
+		code = 'class Z{}; class Y{public: Z z;}; class X{public: Y y;}; \
 			int main(){X x; Z z; z = x.y.z;}'
 		result =  parseCode(code)
 		self.assertTrue(result)
 
 	def test_assign_nested_var(self):
-		code = 'class Y{int var;}; class X{Y y;}; int main(){X x; int var; var = x.y.var;}'
+		code = 'class Y{public: int var;}; class X{public: Y y;}; \
+			int main(){X x; int var; var = x.y.var;}'
 		result =  parseCode(code)
 		self.assertTrue(result)
 
 	def test_assign_to_nested_var(self):
-		code = 'class Y{int var;}; class X{Y y;}; int main(){X x; x.y.var = 2;}'
+		code = 'class Y{public: int var;}; class X{public: Y y;}; \
+			int main(){X x; x.y.var = 2;}'
 		result =  parseCode(code)
 		self.assertTrue(result)	
 
@@ -564,17 +565,17 @@ class TestSemantic(unittest.TestCase):
 			parseCode(code)
 
 	def test_assign_to_nested_object_invalid_type(self):
-		code = 'class X{}; class Y{X x;}; int main(){Y y; y.x = 2;}'
+		code = 'class X{}; class Y{public: X x;}; int main(){Y y; y.x = 2;}'
 		with self.assertRaises(AssignMismatchTypeError):
 			parseCode(code)
 
 	def test_assign_nested_fun(self):
-		code = 'class X{int fun(){}}; int main(){X x; int y; y = x.fun;}'
+		code = 'class X{public: int fun(){}}; int main(){X x; int y; y = x.fun;}'
 		with self.assertRaises(NotAVariableError):
 			parseCode(code)
 
 	def test_assign_to_nested_fun(self):
-		code = 'class X{int fun(){}}; int main(){X x; int y; x.fun = y;}'
+		code = 'class X{public: int fun(){}}; int main(){X x; int y; x.fun = y;}'
 		with self.assertRaises(NotAVariableError):
 			parseCode(code)
 
@@ -593,25 +594,25 @@ class TestSemantic(unittest.TestCase):
 		self.assertTrue(result)
 
 	def test_assign_nested_funcall(self):
-		code = 'class X{int fun(){}}; class Y{X x;}; \
+		code = 'class X{public: int fun(){}}; class Y{public: X x;}; \
 			int main(){Y y; int a; a =y.x.fun();}'
 		result =  parseCode(code)
 		self.assertTrue(result)
 
 	def test_assign_nested_funcall_with_args(self):
-		code = 'class X{int fun(int a){}}; class Y{X x;}; \
+		code = 'class X{public: int fun(int a){}}; class Y{public: X x;}; \
 			int main(){Y y; int a; a = y.x.fun(2);}'
 		result =  parseCode(code)
 		self.assertTrue(result)
 
 	def test_assign_to_nested_var_funcall(self):
-		code = 'class X{int var;}; class Y{X x;}; int fun(){}\
+		code = 'class X{public: int var;}; class Y{public: X x;}; int fun(){}\
 			int main(){Y y; y.x.var = fun();}'
 		result =  parseCode(code)
 		self.assertTrue(result)
 
 	def test_assign_to_nested_var_funcall_wih_args(self):
-		code = 'class X{int var;}; class Y{X x;}; int fun(int a){}\
+		code = 'class X{public: int var;}; class Y{public: X x;}; int fun(int a){}\
 			int main(){Y y; y.x.var = fun(2);}'
 		result =  parseCode(code)
 		self.assertTrue(result)
@@ -637,7 +638,7 @@ class TestSemantic(unittest.TestCase):
 			parseCode(code)
 
 	def test_assign_to_nested_object_invalid_type_fun_call(self):
-		code = 'class X{}; class Y{X x;}; int fun(){} int main(){Y y; y.x = fun();}'
+		code = 'class X{}; class Y{public: X x;}; int fun(){} int main(){Y y; y.x = fun();}'
 		with self.assertRaises(AssignMismatchTypeError):
 			parseCode(code)
 
@@ -881,12 +882,12 @@ class TestSemantic(unittest.TestCase):
 		self.assertTrue(result)
 
 	def test_member_return_nested_object(self):
-		code = 'class X{}; class Y{X x;}; X fun(){Y y; return y.x;}'
+		code = 'class X{}; class Y{public: X x;}; X fun(){Y y; return y.x;}'
 		result =  parseCode(code)
 		self.assertTrue(result)
 
 	def test_member_return_nested_var(self):
-		code = 'class X{int a;}; class Y{X x;}; int fun(){Y y; return y.x.a;}'
+		code = 'class X{public: int a;}; class Y{public: X x;}; int fun(){Y y; return y.x.a;}'
 		result =  parseCode(code)
 		self.assertTrue(result)
 
@@ -944,6 +945,41 @@ class TestSemantic(unittest.TestCase):
 		code = 'class X{}; X fun2(){return;}'
 		with self.assertRaises(WrongReturnTypeError):
 			parseCode(code)
+
+
+	#TEST WRONG ACCESS SPECIFIERS
+	def test_reference_to_default_private_var(self):
+		code = 'class X{int var;}; int fun2(){X x; return x.var;}'
+		with self.assertRaises(AccessSpecifierError):
+			parseCode(code)
+
+	def test_reference_to_private_var(self):
+		code = 'class X{private: int var;}; int fun2(){X x; return x.var;}'
+		with self.assertRaises(AccessSpecifierError):
+			parseCode(code)
+
+
+	def test_reference_to_protected_var(self):
+		code = 'class X{protected: int var;}; int fun2(){X x; return x.var;}'
+		with self.assertRaises(AccessSpecifierError):
+			parseCode(code)
+
+	def test_funcall_private_fun(self):
+		code = 'class X{int fun(){}}; void fun2(){X x; x.fun();}'
+		with self.assertRaises(AccessSpecifierError):
+			parseCode(code)
+
+	def test_reference_to_private_object(self):
+		code = 'class Y{public: int var;}; class X{Y y;}; void fun2(){X x; 2+x.y.var;}'
+		with self.assertRaises(AccessSpecifierError):
+			parseCode(code)
+
+	def test_reference_to_private_nested_var(self):
+		code = 'class Z{int var;}; class Y{public: Z z;}; class X{public: Y y;}; \
+			void fun2(){X x; 2+x.y.z.var;}'
+		with self.assertRaises(AccessSpecifierError):
+			parseCode(code)
+
 
 if __name__ == '__main__':
 	unittest.main()

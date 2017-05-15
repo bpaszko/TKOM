@@ -12,8 +12,7 @@ if __name__ == '__main__':
 
 def createParser(code):
 	stream = io.StringIO(code)
-	lexer = Lexer(stream)
-	parser = Parser(lexer)
+	parser = Parser(stream)
 	return parser
 
 class TestParser(unittest.TestCase):

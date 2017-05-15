@@ -1,40 +1,30 @@
-import unittest
-
 if __name__ == '__main__':
     import sys
-    import io
-    from os import path
-    sys.path.append( path.dirname( path.dirname( path.abspath(__file__) ) ) )
-    from src.pythonGenerator import *
-    from src.my_ast import *
-
-class PythonGeneratorTest(unittest.TestCase):
-	def setUp(self):
-		self.pygen = PythonGenerator()
-
-	def test_class_header(self):
-		self.pygen.create_class(Identifier('MyClass'))
-		result = self.pygen.get_code()
-		expected = 'class MyClass:'
-		self.assertEqual(result, expected)
-
-	def test_no_arg_function_header(self):
-		self.pygen.create_function(Identifier('my_fun'), list())
-		result = self.pygen.get_code()
-		expected = 'def my_fun():'
-		self.assertEqual(result, expected)
-
-	def test_function_header_with_args(self):
-		param1 = Param(TypeSpec('int'), Identifier('p1')) 
-		param2 = Param(Identifier('X'), Identifier('p2')) 
-		param3 = Param(TypeSpec('char'), Identifier('p3')) 
-		param4 = Param(TypeSpec('double'), Identifier('p4')) 
-		param5 = Param(TypeSpec('float'), Identifier('p5'))
-		params = [param1, param2, param3, param4, param5] 
-		self.pygen.create_function(Identifier('my_fun'), params)
-		result = self.pygen.get_code()
-		expected = 'def my_fun(p1, p2, p3, p4, p5):'
-		self.assertEqual(result, expected)
+    import os
+    sys.path.append( os.path.dirname( os.path.dirname( os.path.abspath(__file__) ) ) )
+    from src.parser import *
 
 if __name__ == '__main__':
-	unittest.main()
+    if len(sys.argv) != 2:
+        sys.stderr.write('usage: %s filename' % sys.argv[0])
+        sys.exit(1)
+    filename = sys.argv[1]
+    print(filename)
+    stream = None
+
+    os.system('g++ -std=c++11 -o other/a.out %s' % filename)
+    os.system('other/a.out')
+    print()
+
+    with open(filename, 'r') as f:
+        parser = Parser(f, True)
+        try:
+            parser.parseProgram()
+        except SemanticError as e:
+            print(e.__class__.__name__)
+            print(e)
+            sys.exit(0)
+
+    parser.pygen.dump()
+    os.system('python other/python_code.py')
+

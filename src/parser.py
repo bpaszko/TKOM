@@ -33,17 +33,20 @@ class ParseSemanticError(SemanticError):
         return 'On line: %d, %s' % (self.line, self.prev_exception)
 
 class Parser():
-    def __init__(self, lexer, semantic=None):
-        self.lexer = lexer
+    def __init__(self, stream, semantic=None):
+        self.lexer = Lexer(stream)
         self.current_token = self.lexer.get_next_token()
         if semantic:
-            self.semantic = semantic
+            self.semantic = Semantic(check=True)
         else:
             self.semantic = Semantic(check=False)
         self.pygen = PythonGenerator('other/python_code.py')
 
     def get_next_token(self):
         return self.lexer.get_next_token()
+
+    def get_env(self):
+        return self.semantic.current_env
 
     def eat(self, token_type):
         if self.current_token.type == token_type:
@@ -119,7 +122,6 @@ class Parser():
         if self.current_token.type == TokenType.Identifier:
             id_ = self.parseId()
             self.semantic.check_if_id_is_simple_type_variable(id_)
-            #self.semantic.check_if_simple_type_variable(self.semantic.check_if_valid_id(id_))
             return id_
         token = self.current_token
         if token.type == TokenType.OpenParanthesis:
@@ -213,9 +215,9 @@ class Parser():
         if self.current_token.type == TokenType.If:
             return self.parseSelectionStmt()
 
-        node = self.try_to_parse_decl() #PYGEN SHOULD HANDLE
+        node = self.try_to_parse_decl()
         if node:
-            self.pygen.create_declaration(node)
+            self.pygen.create_declaration(node, self.get_env())
             return node
 
         return self.parseExpStmt()
@@ -250,22 +252,26 @@ class Parser():
         return CompoundStmt(nodes)
 
 
-    def parseExpStmt(self): #PYGEN SHOULD HANDLE
+    def parseExpStmt(self):
         node = self.try_to_parse_exp(self.parseFunctionCall)
         if node:
             self.eat(TokenType.SemiColon)
+            self.pygen.create_funcall(node, self.get_env())
             return node
         node = self.try_to_parse_exp(self.parseAssignment)
         if node:
             self.eat(TokenType.SemiColon)
+            self.pygen.create_assignment(node, self.get_env())
             return node
         node = self.try_to_parse_exp(self.parseAExp)
         if node:
             self.eat(TokenType.SemiColon)
+            self.pygen.create_aexp(node, self.get_env())
             return node
         node = self.try_to_parse_exp(self.parseBExp)
         if node:
             self.eat(TokenType.SemiColon)
+            self.pygen.create_bexp(node, self.get_env())
             return node
 
         raise InvalidSyntaxError("Expected expression, got: %s, line: %d" 
@@ -298,7 +304,7 @@ class Parser():
         self.eat(TokenType.OpenParanthesis)
         boolexp = self.parseBExp()
         self.eat(TokenType.CloseParanthesis)
-        self.pygen.create_while_loop(boolexp)
+        self.pygen.create_while_loop(boolexp, self.get_env())
         body = self.parseStmt()
         self.pygen.decrease()
         self.semantic.previous_env()
@@ -347,7 +353,7 @@ class Parser():
         self.eat(TokenType.SemiColon)
         inc = self.parseIncrement(init)
         self.eat(TokenType.CloseParanthesis)
-        self.pygen.create_for_loop(init, cond, inc)
+        self.pygen.create_for_loop(init, cond, inc, self.get_env())
         body = self.parseStmt()
         self.pygen.decrease()
         self.semantic.previous_env()
@@ -358,7 +364,7 @@ class Parser():
         self.eat(TokenType.If)
         self.eat(TokenType.OpenParanthesis)
         bexp = self.parseBExp()
-        self.pygen.create_if_stmt(bexp)
+        self.pygen.create_if_stmt(bexp, self.get_env())
         self.eat(TokenType.CloseParanthesis)
         true_stmt = self.parseStmt()
         self.pygen.decrease()
@@ -380,13 +386,13 @@ class Parser():
             self.eat(TokenType.SemiColon)
             self.semantic.check_if_inside_loop()
             node = JumpStmt('break') 
-            self.pygen.create_jump_stmt(node)
+            self.pygen.create_jump_stmt(node, self.get_env())
         elif self.current_token.type == TokenType.Continue:
             self.eat(TokenType.Continue)
             self.eat(TokenType.SemiColon)
             self.semantic.check_if_inside_loop()
             node = JumpStmt('continue') 
-            self.pygen.create_jump_stmt(node)
+            self.pygen.create_jump_stmt(node, self.get_env())
         elif self.current_token.type == TokenType.Return:
             self.eat(TokenType.Return)
             ret = None
@@ -395,7 +401,7 @@ class Parser():
             self.eat(TokenType.SemiColon)
             node = JumpStmt('return', ret)
             self.semantic.check_return(node)
-            self.pygen.create_jump_stmt(node)    
+            self.pygen.create_jump_stmt(node, self.get_env())    
         return node 
 
 
@@ -412,14 +418,13 @@ class Parser():
         init = self.parseInitialization()
         node = AssignExp(id, init)
         self.semantic.check_if_valid_assignment(node)
-        self.pygen.create_assignment(node)
         return node
 
     def parseInitialization(self):
         self.eat(TokenType.Assign)
         return self.parseRValue()
 
-    def parseRValue(self):  # TRY TO PARSE
+    def parseRValue(self): 
         node = self.try_to_parse_exp(self.parseId)
         if node:
             return node
@@ -436,8 +441,8 @@ class Parser():
         if node:
             return node
  
-        raise InvalidSyntaxError("Expected r-value, got %s, line: %d" 
-                % (self.current_token.value, self.current_token.line))
+        raise InvalidSyntaxError("Expected r-value, line: %d" 
+                % (self.current_token.line))
 
     def parseDecl(self, param):
         self.semantic.check_parameter(param)
@@ -497,43 +502,48 @@ class Parser():
                 raise InvalidSyntaxError("Expected parameter, got %s, line: %d" 
                     % (self.current_token.value, self.current_token.line))
             param = self.parseParameter()
-            self.semantic.check_parameter(param)
+            self.semantic.add_parameter(param)
             parameters.append(param)
             if self.current_token.type == TokenType.CloseParanthesis:
                 break
             self.eat(TokenType.Comma)
         return parameters
 
-    def parseFunctionDefinition(self, param): #PYGEN SHOULD HANDLE
+    def parseFunctionDefinition(self, param, access='public'): 
         self.semantic.set_new_env(env_type=EnvType.Fun)
         type_, name = param.type, param.name
         self.eat(TokenType.OpenParanthesis)
         params = self.parseParameterList()
 
-        self.semantic.add_function_definition(type_, name)
-        self.pygen.create_function(name, params)
+        self.semantic.add_function_definition(type_, name, access)
+        self.pygen.create_function(name, params, self.get_env())
 
         self.eat(TokenType.CloseParanthesis)
-        node = FunDef(type_, name, params, body=self.parseCompoundStmt())
+        body=self.parseCompoundStmt()
+        node = FunDef(type_, name, params, body)
+        
+        if not body.statements:
+            self.pygen.create_pass()
         self.pygen.decrease()
         self.semantic.previous_env()
+
         return node
 
-    def parseMemberDeclaration(self): #PYGEN SHOULD HANDLE
+    def parseMemberDeclaration(self, access):
         param = self.parseParameter()
         if self.current_token.type == TokenType.OpenParanthesis:
-            return self.parseFunctionDefinition(param)
+            return self.parseFunctionDefinition(param, access)
 
         decl = self.parseDeclStmt(param)
-        self.semantic.add_declaration(decl, True)
-        self.pygen.create_declaration(decl)
+        self.semantic.add_declaration(decl, access)
+        self.pygen.create_declaration(decl, self.get_env())
         return decl
 
-    def parseMembersDeclarations(self):
+    def parseMembersDeclarations(self, access):
         access_members = []
         while self.current_token.value not in access_specifiers and \
           self.current_token.type != TokenType.RBracket:
-            member_declaration = self.parseMemberDeclaration()
+            member_declaration = self.parseMemberDeclaration(access)
             access_members.append(member_declaration)
         return access_members
 
@@ -541,7 +551,7 @@ class Parser():
         access_type = self.current_token.value
         self.eat(self.current_token.type) #PROTECTED, PRIVATE, PUBLIC
         self.eat(TokenType.Colon)
-        access_members = self.parseMembersDeclarations()
+        access_members = self.parseMembersDeclarations(access_type)
         return AccessMembers(access_type, access_members)
 
     def parseMemberSpecification(self):
@@ -551,11 +561,11 @@ class Parser():
                 part_members = self.parseAccessMembers()
                 members.append(part_members)
             else:
-                members_decl = self.parseMembersDeclarations()
+                members_decl = self.parseMembersDeclarations('private')
                 members.append(AccessMembers('private', members_decl))
         return members
 
-    def parseClassSpecifier(self): #PYGEN SHOULD HANDLE
+    def parseClassSpecifier(self):
         self.semantic.set_new_env(env_type=EnvType.Class)
         self.eat(TokenType.Class)
         name = self.parseIdentifier()
@@ -568,9 +578,18 @@ class Parser():
         self.eat(TokenType.RBracket)
         self.eat(TokenType.SemiColon)
         class_ = Class(name, member_spec)
+        if Parser.checkIfEmptyClass(class_):
+            self.pygen.create_pass()
         self.pygen.decrease()
         self.semantic.previous_env()
         return class_
+
+    @staticmethod
+    def checkIfEmptyClass(class_):
+        for member in class_.members:
+            if member.members_declarations:
+                return False
+        return True
 
     def parseDefinition(self):
         if self.current_token.type == TokenType.Class:
@@ -588,14 +607,13 @@ class Parser():
         return decl
 
     def parseProgram(self):
-        #try:
         nodes = []
         while(self.current_token.type != TokenType.EOF):
             node = self.parseDefinition()
             nodes.append(node)
+        self.pygen.create_main_call()
         return Program(nodes)
-        #except SemanticError as e:
-        #    raise ParseSemanticError(self.current_token.line, e)
+
 
 
 def print_env(env, tb=0):
@@ -611,18 +629,14 @@ if __name__ == '__main__':
     filename = sys.argv[1]
     stream = None
     with open(filename, 'r') as f:
-        stream = io.StringIO(f.read())
-    lexer = Lexer(stream)
-    semantic = Semantic(True)
-    parser = Parser(lexer, semantic)
-    try:
-        result = parser.parseProgram()
-    except SemanticError as e:
-        print(e.__class__.__name__)
-        print(e)
-    else:
-        #print(result)
-        print(parser.pygen.dump())
+        parser = Parser(f, True)
+        try:
+            result = parser.parseProgram()
+        except (SyntaxError, SemanticError) as e:
+            print(e.__class__.__name__)
+            print(e)
+        else:
+            print(result)
 
     #result = parser.parseProgram()
 

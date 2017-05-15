@@ -134,6 +134,17 @@ class VoidVariableDeclarationError(SemanticError):
 	def __str__(self):
 		return 'Declaring void variable: %s' % self.name
 
+class AccessSpecifierError(SemanticError):
+	def __init__(self, var, class_, access):
+		self.var = var
+		self.class_ = class_
+		self.access = access
+
+	def __str__(self):
+		return 'Trying to access %s, which is %s field of class %s.' % \
+			(self.var, self.access, self.class_)
+
+
 class UnknownTypeError(SemanticError):
 	pass
 

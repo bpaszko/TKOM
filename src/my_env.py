@@ -23,16 +23,18 @@ class Entity:
 		return '%s, [%s]' % (self.type_.name, self.struct)
 
 class VariableStruct:
-	def __init__(self, type_):
+	def __init__(self, type_, access):
 		self.type_ = type_
+		self.access = access
 
 	def __repr__(self):	
 		return '%s' % self.type_
 
 class FunctionStruct:
-	def __init__(self, type_, env):
+	def __init__(self, type_, env, access):
 		self.type_ = type_
 		self.env = env #USED TO CHECK ARGS
+		self.access = access
 
 	def __repr__(self):
 		return '%s, %s' % (self.type_,self.env) 

@@ -70,6 +70,9 @@ class Semantic:
 				variable_entity = self.check_if_part_of_class(variable_to_check.name, variable_class)
 				if not variable_entity:
 					raise NotAClassMemberError(variable_to_check.to_text(), variable_class)
+				access = variable_entity.struct.access
+				if access != 'public':
+					raise AccessSpecifierError(variable_to_check.to_text(), variable_class, access)
 			return variable_entity
 		else:
 			variable_entity = self.check_if_declared_variable(id_)
@@ -266,7 +269,7 @@ class Semantic:
 			raise NotAClassError(name)
 
 
-	def add_declaration(self, decl, member=False):
+	def add_declaration(self, decl, access='public'):
 		if not self.check_syntax:
 			return
 		parameter, value = decl.parameter, decl.value
@@ -289,14 +292,14 @@ class Semantic:
 				if not Semantic.check_two_types_compatibility(l_type, r_type):
 					Semantic.throw_assign_mismatch_type_error(l_type, r_type)
 
-		var_entity = Entity(EntityType.Var, VariableStruct(var_type))
+		var_entity = Entity(EntityType.Var, VariableStruct(var_type, access))
 		self.current_env.dict[var_name] = var_entity
 
 
 
 
 
-	def add_function_definition(self, return_type, id_): #FUN NAME CHECK
+	def add_function_definition(self, return_type, id_, access='public'): #FUN NAME CHECK
 		if not self.check_syntax:
 			return
 		parent_env = self.current_env.parent
@@ -305,7 +308,7 @@ class Semantic:
 			raise AlreadyDeclaredError(fun_name)
 
 		self.name_env(fun_name)
-		fun_entity = Entity(EntityType.Fun, FunctionStruct(return_type, self.current_env))
+		fun_entity = Entity(EntityType.Fun, FunctionStruct(return_type, self.current_env, access))
 		parent_env.dict[fun_name] = fun_entity
 
 
@@ -330,7 +333,11 @@ class Semantic:
 		type_spec, name = param.type, param.name.name
 		if self.current_env.find_local(name):
 			raise AlreadyDeclaredError(name)
-		var = VariableStruct(type_spec)
+
+	def add_parameter(self, param, access='public'):
+		self.check_parameter(param)
+		type_spec, name = param.type, param.name.name
+		var = VariableStruct(type_spec, access)
 		self.current_env.dict[name] = Entity(EntityType.Var, var)
 
 
