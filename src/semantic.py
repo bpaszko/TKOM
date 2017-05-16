@@ -54,6 +54,7 @@ class Semantic:
 			raise NotAnObjectError(var_id.to_text())
 		return var_entity.struct.type_.name
 
+
 	#gets id or identifier and returns entity if exist
 	#raises NotAVariable, NotAnObject, NotDeclaredVariable, NotAClassMember
 	def check_if_valid_id(self, id_):
@@ -334,7 +335,7 @@ class Semantic:
 		if self.current_env.find_local(name):
 			raise AlreadyDeclaredError(name)
 		parent = self.current_env.parent
-		if parent and parent.env_type == EnvType.Fun:
+		if parent and (parent.env_type == EnvType.Fun or parent.env_type == EnvType.Loop):
 			if parent.find_local(name):
 				raise AlreadyDeclaredError(name)
 

@@ -38,9 +38,10 @@ class Parser():
         self.current_token = self.lexer.get_next_token()
         if semantic:
             self.semantic = Semantic(check=True)
+            self.pygen = PythonGenerator('other/python_code.py', check=True)
         else:
             self.semantic = Semantic(check=False)
-        self.pygen = PythonGenerator('other/python_code.py')
+            self.pygen = PythonGenerator('other/python_code.py', check=False)
 
     def get_next_token(self):
         return self.lexer.get_next_token()
@@ -128,6 +129,7 @@ class Parser():
             self.eat(TokenType.OpenParanthesis)
             node = self.parseAExp()
             self.eat(TokenType.CloseParanthesis)
+            node.add_paranthesis()
             return node
         raise InvalidSyntaxError("Can't parse Aexp")
 
@@ -161,6 +163,7 @@ class Parser():
             self.eat(TokenType.OpenParanthesis)
             node = self.parseBExp()
             self.eat(TokenType.CloseParanthesis)
+            node.add_paranthesis()
             return node
 
         elif token.type in (TokenType.False_, TokenType.True_):
@@ -306,6 +309,8 @@ class Parser():
         self.eat(TokenType.CloseParanthesis)
         self.pygen.create_while_loop(boolexp, self.get_env())
         body = self.parseStmt()
+        if isinstance(body, CompoundStmt) and not body.statements:
+            self.pygen.create_pass()
         self.pygen.decrease()
         self.semantic.previous_env()
         return WhileStmt(condition=boolexp, body=body)
@@ -314,6 +319,7 @@ class Parser():
     #RETURN DECL
     def parseForInit(self):
         node = self.parseParameter()
+        self.semantic.check_parameter(node)
         init = self.parseInitialization()
         decl = Decl(node, init)
         self.semantic.add_declaration(decl)
@@ -322,11 +328,13 @@ class Parser():
     #return relopbexp
     def parseConditionLessThan(self, decl):
         left = self.parseIdentifier()  
+        self.semantic.check_if_valid_id(left)
         node = None
         self.eat(TokenType.LessThan)
         if self.current_token.type == TokenType.Identifier:
-            node = RelopBexp(left=left, op='<', right=self.parseIdentifier())
-            self.semantic.check_if_valid_id(node) # NOT SURE!!!!!!!!!!!!!!! TODODDODODO
+            right=self.parseIdentifier()
+            self.semantic.check_if_valid_id(right)
+            node = RelopBexp(left=left, op='<', right=right)
         else:
             node = RelopBexp(left=left, op='<', right=self.parseLiteral())
         self.semantic.check_for_condition(node, decl)
@@ -355,6 +363,8 @@ class Parser():
         self.eat(TokenType.CloseParanthesis)
         self.pygen.create_for_loop(init, cond, inc, self.get_env())
         body = self.parseStmt()
+        if isinstance(body, CompoundStmt) and not body.statements:
+            self.pygen.create_pass()
         self.pygen.decrease()
         self.semantic.previous_env()
         return ForStmt(init=init, condition=cond, increment=inc, body=body)
@@ -367,6 +377,8 @@ class Parser():
         self.pygen.create_if_stmt(bexp, self.get_env())
         self.eat(TokenType.CloseParanthesis)
         true_stmt = self.parseStmt()
+        if isinstance(true_stmt, CompoundStmt) and not true_stmt.statements:
+            self.pygen.create_pass()
         self.pygen.decrease()
         self.semantic.previous_env()
         if self.current_token.type == TokenType.Else:
@@ -374,6 +386,8 @@ class Parser():
             self.eat(TokenType.Else)
             self.pygen.create_else_stmt()
             false_stmt = self.parseStmt()
+            if isinstance(false_stmt, CompoundStmt) and not false_stmt.statements:
+                self.pygen.create_pass()
             self.pygen.decrease()
             self.semantic.previous_env()
             return IfStmt(condition=bexp, true_stmt=true_stmt, false_stmt=false_stmt)
@@ -604,10 +618,12 @@ class Parser():
 
         decl = self.parseDeclStmt(param)
         self.semantic.add_declaration(decl)
+        self.pygen.create_declaration(decl, self.get_env())
         return decl
 
     def parseProgram(self):
         nodes = []
+        self.pygen.create_copy_import()
         while(self.current_token.type != TokenType.EOF):
             node = self.parseDefinition()
             nodes.append(node)

@@ -10,6 +10,8 @@ else:
     from semantic_errors import *
 
 
+from re import findall
+
 class Equality:
     pass
 
@@ -29,10 +31,13 @@ class Literal(Aexp):
     def __hash__(self):
         return hash(self.value)
 
+    def add_paranthesis(self):
+        self.paranthesis = False
+
     def to_text(self):
         return str(self.value)
 
-    def to_python(self, env):
+    def to_python(self, env, py_vars):
         return str(self.value)
 
 class IntNum(Literal):  # IntAexp
@@ -67,6 +72,9 @@ class Character(Literal):
     def __repr__(self):
         return 'Char(%s)' % self.value
 
+    def to_python(self, env, py_vars):
+        return 'ord(\'' + str(self.value) + '\')'
+
 
 class Id:
     def __init__(self, parent, child):
@@ -82,8 +90,8 @@ class Id:
     def to_text(self):
         return '%s.%s' % (self.parent.to_text(), self.child.to_text())
 
-    def to_python(self, env):
-        return self.parent.to_python(env) + '.' + self.child.to_python(env)
+    def to_python(self, env, py_vars):
+        return self.parent.to_python(env, py_vars) + '.' + self.child.to_python(None, py_vars)
   
 
 class Identifier:  # VarAexp
@@ -99,7 +107,7 @@ class Identifier:  # VarAexp
     def to_text(self):
         return self.name
 
-    def to_python(self, env):
+    def to_python(self, env, py_vars):
         code = ''
         while env and env.parent:
             if env.find_local(self.name):
@@ -107,8 +115,31 @@ class Identifier:  # VarAexp
                     code += 'self.'
                 break
             env = env.parent
-        code += self.name
+
+        if self.name in py_vars:
+            pass
+        elif self.name in py_vars.values():
+            get_new_name(self.name, py_vars)
+        else:
+            py_vars[self.name]=self.name
+        code += py_vars[self.name]
         return code
+
+def get_new_name(name, py_vars):
+    parts = findall(r'^.*_([0-9]+)$', name)
+    if parts:
+        part = parts[-1]
+        part = str(int(part) + 1)
+        new_name = name[:len(name)-len(part)] + part    
+        while new_name in py_vars.values():
+            part = str(int(part) + 1)
+            new_name = name[:len(name)-len(part)] + part
+        py_vars[name] = new_name
+    elif name[-1] == '_':
+        py_vars[name] = name + '1'
+    else:
+        py_vars[name] = name + '_'
+
 
 
 class BinopAexp(Aexp):
@@ -116,6 +147,10 @@ class BinopAexp(Aexp):
         self.left = left
         self.op = op
         self.right = right
+        self.paranthesis = False
+
+    def add_paranthesis(self):
+        self.paranthesis = True
 
     def __eq__(self, other):
         return self.op == other.op and self.left == other.left and self.right == other.right
@@ -123,12 +158,16 @@ class BinopAexp(Aexp):
     def __repr__(self):
         return 'BinopAexp(%s, %s, %s)' % (self.left, self.op, self.right)
 
-    def to_python(self, env):
-        return self.left.to_python(env) + ' ' + str(self.op) + ' ' + self.right.to_python(env)
+    def to_python(self, env, py_vars):
+        code = self.left.to_python(env, py_vars) + ' ' + str(self.op) + ' ' + self.right.to_python(env, py_vars)
+        return '(' + code + ')' if self.paranthesis else code
 
 
 class Bexp:
-    pass
+    paranthesis = False
+
+    def add_paranthesis(self):
+        self.paranthesis = True
 
 
 class BoolLit(Bexp):
@@ -141,8 +180,8 @@ class BoolLit(Bexp):
     def __repr__(self):
         return 'BoolLit(%s)' % self.value
 
-    def to_python(self, env):
-        return str(self.value)
+    def to_python(self, env, py_vars):
+        return str(self.value).title()
 
 
 class RelopBexp(Bexp):
@@ -157,8 +196,10 @@ class RelopBexp(Bexp):
     def __repr__(self):
         return 'RelopBexp(%s, %s, %s)' % (self.left, self.op, self.right)
 
-    def to_python(self, env):
-        return self.left.to_python(env) + ' ' + str(self.op) + ' ' + self.right.to_python(env)
+    def to_python(self, env, py_vars):
+        code = self.left.to_python(env, py_vars) + ' ' + str(self.op) + ' ' + self.right.to_python(env, py_vars)
+        return '(' + code + ')' if self.paranthesis else code
+
 
 class AndBexp(Bexp):
     def __init__(self, left, right):
@@ -171,8 +212,9 @@ class AndBexp(Bexp):
     def __repr__(self):
         return 'AndBexp(%s, %s)' % (self.left, self.right)
 
-    def to_python(self, env):
-        return self.left.to_python(env) + ' and ' + self.right.to_python(env)
+    def to_python(self, env, py_vars):
+        code = self.left.to_python(env, py_vars) + ' and ' + self.right.to_python(env, py_vars)
+        return '(' + code + ')' if self.paranthesis else code
 
 
 class OrBexp(Bexp):
@@ -186,8 +228,9 @@ class OrBexp(Bexp):
     def __repr__(self):
         return 'OrBexp(%s, %s)' % (self.left, self.right)
 
-    def to_python(self, env):
-        return self.left.to_python(env) + ' or ' + self.right.to_python(env)
+    def to_python(self, env, py_vars):
+        code = self.left.to_python(env, py_vars) + ' or ' + self.right.to_python(env, py_vars)
+        return '(' + code + ')' if self.paranthesis else code
 
 
 class NotBexp(Bexp):
@@ -200,8 +243,9 @@ class NotBexp(Bexp):
     def __repr__(self):
         return 'NotBexp(%s)' % (self.exp)
 
-    def to_python(self, env):
-        return 'not ' + self.exp.to_python(env)
+    def to_python(self, env, py_vars):
+        code = 'not ' + self.exp.to_python(env, py_vars)
+        return '(' + code + ')' if self.paranthesis else code
 
 
 class Statement(Equality):
@@ -218,12 +262,6 @@ class CompoundStmt(Statement):
     def __repr__(self):
         return 'CompoundStmt(%s)' % (self.statements)
 
-    """def to_python(self, env):
-        code = ''
-        for stmt in self.statements:
-            code += stmt.to_python(tabs+1) +'\n'
-        return code """
-
 
 class IfStmt(Statement):
     def __init__(self, condition, true_stmt, false_stmt):
@@ -237,12 +275,6 @@ class IfStmt(Statement):
     def __repr__(self):
         return 'IfStmt(%s, %s, %s)' % (self.condition, self.true_stmt, self.false_stmt)
 
-    """def to_python(self, env):
-        code = tabs * '\t' + 'if ' + self.condition.to_python(env) + ':\n' +  
-            self.true_stmt.to_python(tabs + 1)
-        if self.false_stmt:
-            code += tabs * '\t' + 'else:\n' + self.false_stmt.to_python(tabs+1)"""
-
 
 class WhileStmt(Statement):
     def __init__(self, condition, body):
@@ -255,9 +287,6 @@ class WhileStmt(Statement):
     def __repr__(self):
         return 'WhileStmt(%s, %s)' % (self.condition, self.body)
 
-    """def to_python(self, env):
-        code = tabs * '\t' + 'while ' + self.condition.to_python(env) + ':\n' +
-            self.body.to_python(tabs+1) + '\n'"""
 
 
 class JumpStmt(Statement):
@@ -271,10 +300,10 @@ class JumpStmt(Statement):
     def __repr__(self):
         return 'JumpStmt(%s, %s)' % (self.value, self.returnable)
 
-    def to_python(self, env):
+    def to_python(self, env, py_vars):
         code = self.value
         if self.returnable:
-            code += ' ' + self.returnable.to_python(env)
+            code += ' ' + self.returnable.to_python(env, py_vars)
         return code
 
 
@@ -292,8 +321,6 @@ class ForStmt(Statement):
     def __repr__(self):
         return 'ForStmt(%s, %s, %s, %s)' % (self.init, self.condition, self.increment, self.body)
 
-    """def to_python(self, env):
-        code = #TODO"""
 
 class AssignExp(Statement):
     def __init__(self, name, value):
@@ -306,8 +333,8 @@ class AssignExp(Statement):
     def __repr__(self):
         return 'AssignExp(%s, =, %s)' % (self.name, self.value)
 
-    def to_python(self, env):
-        return self.name.to_python(env) + ' = ' + self.value.to_python(env) 
+    def to_python(self, env, py_vars):
+        return self.name.to_python(env, py_vars) + ' = ' + self.value.to_python(env, py_vars) 
 
 class Decl:
     def __init__(self, parameter, value):
@@ -320,14 +347,14 @@ class Decl:
     def __repr__(self):
         return 'Decl(%s, =, %s)' % (self.parameter, self.value)
 
-    def to_python(self, env):
-        code = self.parameter.to_python(None) + ' = ' 
+    def to_python(self, env, py_vars):
+        code = self.parameter.to_python(None, py_vars) + ' = ' 
         type_ = self.parameter.type
         if isinstance(type_, Identifier):
-            code += type_.to_python(env) + '()'
+            code += type_.to_python(env, py_vars) + '()'
         else:
             if self.value:
-                code += self.value.to_python(env)
+                code += self.value.to_python(env, py_vars)
             else:
                 code += '0'
         return code
@@ -342,10 +369,6 @@ class TypeSpec:
     def __repr__(self):
         return 'TypeSpec(%s)' % (self.value)
 
-    """def to_python(self, env):
-        return ''"""
-
-
 class Param:
     def __init__(self, type, name):
         self.type = type
@@ -357,8 +380,8 @@ class Param:
     def __repr__(self):
         return 'Param(%s, %s)' % (self.type, self.name)
 
-    def to_python(self, env):
-        return self.name.to_python(env)
+    def to_python(self, env, py_vars):
+        return self.name.to_python(env, py_vars)
 
 class Program:
     def __init__(self, definitions):
@@ -370,10 +393,6 @@ class Program:
     def __repr__(self):
         return 'Program(%s)' % (self.definitions)
 
-    """def to_python(self, env):
-        code = ''
-        for definition in definitions:
-            code += definition.to_python(tabs)"""
 
 class FunDef:
     def __init__(self, type, name, parameters, body):
@@ -389,13 +408,6 @@ class FunDef:
     def __repr__(self):
         return 'FunDef(%s, %s, %s, %s)' % (self.type, self.name, self.parameters, self.body)
 
-    """def to_python(self, env):
-        code = tabs * '\t' + self.name.to_python(env) + '('
-        for i, parameter in enumerate(parameters):
-            code += parameter.to_python(env)
-            if i < len(parameters) - 1:
-                code += ', '
-        code += '):\n' + self.body.to_python(tabs+1)"""
 
 class Class:
     def __init__(self, name, members):
@@ -420,6 +432,7 @@ class AccessMembers:
     def __repr__(self):
         return 'AccessMembers(%s, %s)' % (self.access_specifier, self.members_declarations)
 
+
 class FunCall:
     def __init__(self, name, args):
         self.name = name
@@ -431,11 +444,39 @@ class FunCall:
     def __repr__(self):
         return 'FunCall(%s, %s)' % (self.name, self.args)
 
-    def to_python(self, env):
-        code = self.name.to_python(env) + '(' 
+    def to_python(self, env, py_vars):
+        code = self.name.to_python(env, py_vars) + '(' 
         for i, arg in enumerate(self.args):
-            code += arg.to_python(env)
+            #code += arg.to_python(env, py_vars)
+            arg_code = arg.to_python(env,py_vars)
+            if isinstance(arg, Identifier) or isinstance(arg, Id):
+                if isinstance(get_id_return_type(arg, env), Identifier):
+                    arg_code = 'deepcopy(' + arg_code + ')'
+            code += arg_code
             if i < len(self.args) - 1:
                 code += ', '
         code += ')'
         return code
+
+
+def get_id_return_type(id_, env):
+    from src.semantic import Semantic
+    global_env = env
+    while global_env.parent:
+        global_env = global_env.parent
+    if isinstance(id_, Id):
+        variable_to_check = id_.parent
+        variable_entity = env.find(variable_to_check.name)
+        while(isinstance(id_, Id)):
+            variable_class = Semantic.get_var_class_name(variable_entity, variable_to_check)
+            variable_to_check = id_ = id_.child
+            if isinstance(id_, Id):
+                variable_to_check = id_.parent
+
+            class_ = global_env.find_local(variable_class)
+            class_env = class_.struct.env    
+            variable_entity = class_env.find_local(variable_to_check.name)
+        return variable_entity.struct.type_
+    else:
+        variable_entity = env.find(id_.name)
+        return variable_entity.struct.type_
