@@ -33,15 +33,12 @@ class ParseSemanticError(SemanticError):
         return 'On line: %d, %s' % (self.line, self.prev_exception)
 
 class Parser():
-    def __init__(self, stream, semantic=None):
+    def __init__(self, stream, semantic=False, pygen=False):
         self.lexer = Lexer(stream)
         self.current_token = self.lexer.get_next_token()
-        if semantic:
-            self.semantic = Semantic(check=True)
-            self.pygen = PythonGenerator('other/python_code.py', check=True)
-        else:
-            self.semantic = Semantic(check=False)
-            self.pygen = PythonGenerator('other/python_code.py', check=False)
+        self.semantic = Semantic(check=semantic)
+        self.pygen = PythonGenerator('other/python_code.py', check=pygen)
+        
 
     def get_next_token(self):
         return self.lexer.get_next_token()
@@ -483,17 +480,19 @@ class Parser():
 
     def parseArgList(self): 
         args = []
-        while self.current_token.type != TokenType.CloseParanthesis:
-            if self.current_token.type == TokenType.Identifier:
-                args.append(self.parseId())
-            elif self.current_token.type in literals_types:
-                args.append(self.parseLiteral())
-            else:
-                raise InvalidSyntaxError("Expected argument, got %s, line: %d" 
-                    % (self.current_token.value, self.current_token.line))
-            if self.current_token.type == TokenType.CloseParanthesis:
-                break
-            self.eat(TokenType.Comma)
+        if self.current_token.type != TokenType.CloseParanthesis:
+            while True:
+                #while self.current_token.type != TokenType.CloseParanthesis:
+                if self.current_token.type == TokenType.Identifier:
+                    args.append(self.parseId())
+                elif self.current_token.type in literals_types:
+                    args.append(self.parseLiteral())
+                else:
+                    raise InvalidSyntaxError("Expected argument, got %s, line: %d" 
+                        % (self.current_token.value, self.current_token.line))
+                if self.current_token.type == TokenType.CloseParanthesis:
+                    break
+                self.eat(TokenType.Comma)
         return args
 
     def parseFunctionCall(self): 
@@ -510,17 +509,19 @@ class Parser():
 
     def parseParameterList(self):
         parameters = []
-        while self.current_token.type != TokenType.CloseParanthesis:
-            if self.current_token.value not in type_specifiers and \
-              self.current_token.type != TokenType.Identifier:
-                raise InvalidSyntaxError("Expected parameter, got %s, line: %d" 
-                    % (self.current_token.value, self.current_token.line))
-            param = self.parseParameter()
-            self.semantic.add_parameter(param)
-            parameters.append(param)
-            if self.current_token.type == TokenType.CloseParanthesis:
-                break
-            self.eat(TokenType.Comma)
+        if self.current_token.type != TokenType.CloseParanthesis:
+            while True:
+                #while self.current_token.type != TokenType.CloseParanthesis:
+                if self.current_token.value not in type_specifiers and \
+                  self.current_token.type != TokenType.Identifier:
+                    raise InvalidSyntaxError("Expected parameter, got %s, line: %d" 
+                        % (self.current_token.value, self.current_token.line))
+                param = self.parseParameter()
+                self.semantic.add_parameter(param)
+                parameters.append(param)
+                if self.current_token.type == TokenType.CloseParanthesis:
+                    break
+                self.eat(TokenType.Comma)
         return parameters
 
     def parseFunctionDefinition(self, param, access='public'): 
@@ -645,7 +646,7 @@ if __name__ == '__main__':
     filename = sys.argv[1]
     stream = None
     with open(filename, 'r') as f:
-        parser = Parser(f, True)
+        parser = Parser(f, semantic=True, pygen=False)
         try:
             result = parser.parseProgram()
         except (SyntaxError, SemanticError) as e:

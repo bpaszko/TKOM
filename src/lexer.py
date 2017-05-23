@@ -205,10 +205,9 @@ class Lexer:
 
 if __name__ == '__main__':
     filename = sys.argv[1]
-    file = open(filename)
-    characters = file.read()
-    file.close()
-    lexer = Lexer()
-    tokens = lexer.cpp_lex(characters)
-    for token in tokens:
-        print(token.value, "\t-->\t", token.type)
+    with open(filename, 'r') as file:
+        lexer = Lexer(file)
+        token = lexer.get_next_token()
+        while token.type != TokenType.EOF:
+            print(token.value, "\t-->\t", token.type)
+            token = lexer.get_next_token()

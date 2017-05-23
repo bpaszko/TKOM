@@ -47,6 +47,12 @@ class IntNum(Literal):  # IntAexp
     def __eq__(self, other):
         return self.value == other.value
 
+    def get_aexp_type(self, env=None):
+        return 'int'
+
+    def get_type(self, env):
+        return 'int'
+
     def __repr__(self):
         return 'IntNum(%s)' % self.value
 
@@ -61,6 +67,12 @@ class FloatNum(Literal):
     def __repr__(self):
         return 'FloatNum(%s)' % self.value
 
+    def get_aexp_type(self, env=None):
+        return 'float'
+
+    def get_type(self, env):
+        return 'float'
+
 
 class Character(Literal):
     def __init__(self, value):
@@ -71,6 +83,12 @@ class Character(Literal):
 
     def __repr__(self):
         return 'Char(%s)' % self.value
+
+    def get_aexp_type(self, env=None):
+        return 'int'
+
+    def get_type(self, env):
+        return 'int'
 
     def to_python(self, env, py_vars):
         return 'ord(\'' + str(self.value) + '\')'
@@ -86,6 +104,28 @@ class Id:
 
     def __repr__(self):
         return 'Id(%s, %s)' % (self.parent, self.child)
+
+    def get_aexp_type(self, env):
+        ret = get_id_return_type(self, env)
+        if isinstance(ret, TypeSpec):
+            type_name = ret.value
+            if type_name in ['int', 'long', 'bool', 'char']:
+                return 'int'
+            else:
+                return 'float'
+        return 'obj'
+
+    def get_type(self, env):
+        ret = get_id_return_type(self, env)
+        if isinstance(ret, TypeSpec):
+            type_name = ret.value
+            if type_name in ['int', 'long', 'char']:
+                return 'int'
+            elif type_name == 'bool':
+                return 'bool'
+            else:
+                return 'float'
+        return 'obj'
 
     def to_text(self):
         return '%s.%s' % (self.parent.to_text(), self.child.to_text())
@@ -103,6 +143,28 @@ class Identifier:  # VarAexp
 
     def __repr__(self):
         return 'Identifier(%s)' % self.name
+
+    def get_aexp_type(self, env):
+        ret = get_id_return_type(self, env)
+        if isinstance(ret, TypeSpec):
+            type_name = ret.value
+            if type_name in ['int', 'long', 'bool', 'char']:
+                return 'int'
+            else:
+                return 'float'
+        return 'obj'
+
+    def get_type(self, env):
+        ret = get_id_return_type(self, env)
+        if isinstance(ret, TypeSpec):
+            type_name = ret.value
+            if type_name in ['int', 'long', 'char']:
+                return 'int'
+            elif type_name == 'bool':
+                return 'bool'
+            else:
+                return 'float'
+        return 'obj'
 
     def to_text(self):
         return self.name
@@ -158,8 +220,22 @@ class BinopAexp(Aexp):
     def __repr__(self):
         return 'BinopAexp(%s, %s, %s)' % (self.left, self.op, self.right)
 
+    def get_aexp_type(self, env=None):
+        return 'int' if self.left.get_aexp_type(env) == 'int' and self.right.get_aexp_type(env) == 'int' \
+            else 'float'
+
+    def get_type(self, env):
+        return self.get_aexp_type(env)
+
     def to_python(self, env, py_vars):
-        code = self.left.to_python(env, py_vars) + ' ' + str(self.op) + ' ' + self.right.to_python(env, py_vars)
+        code = ''
+        if self.op == '/': 
+            if self.left.get_aexp_type(env) == 'int' and self.right.get_aexp_type(env) == 'int':
+                code = 'int(' + self.left.to_python(env, py_vars) + ' ' +self.op + \
+                    ' ' + self.right.to_python(env, py_vars) + ')'
+                return code
+        code = self.left.to_python(env, py_vars) + ' ' + self.op + ' ' + \
+            self.right.to_python(env, py_vars)
         return '(' + code + ')' if self.paranthesis else code
 
 
@@ -180,6 +256,12 @@ class BoolLit(Bexp):
     def __repr__(self):
         return 'BoolLit(%s)' % self.value
 
+    def get_aexp_type(self, env=None):
+        return 'int'
+
+    def get_type(self, env=None):
+        return 'bool'
+
     def to_python(self, env, py_vars):
         return str(self.value).title()
 
@@ -195,6 +277,9 @@ class RelopBexp(Bexp):
 
     def __repr__(self):
         return 'RelopBexp(%s, %s, %s)' % (self.left, self.op, self.right)
+
+    def get_type(self, env=None):
+        return 'bool'
 
     def to_python(self, env, py_vars):
         code = self.left.to_python(env, py_vars) + ' ' + str(self.op) + ' ' + self.right.to_python(env, py_vars)
@@ -212,6 +297,9 @@ class AndBexp(Bexp):
     def __repr__(self):
         return 'AndBexp(%s, %s)' % (self.left, self.right)
 
+    def get_type(self, env=None):
+        return 'bool'
+
     def to_python(self, env, py_vars):
         code = self.left.to_python(env, py_vars) + ' and ' + self.right.to_python(env, py_vars)
         return '(' + code + ')' if self.paranthesis else code
@@ -228,6 +316,9 @@ class OrBexp(Bexp):
     def __repr__(self):
         return 'OrBexp(%s, %s)' % (self.left, self.right)
 
+    def get_type(self, env=None):
+        return 'bool'
+
     def to_python(self, env, py_vars):
         code = self.left.to_python(env, py_vars) + ' or ' + self.right.to_python(env, py_vars)
         return '(' + code + ')' if self.paranthesis else code
@@ -242,6 +333,9 @@ class NotBexp(Bexp):
 
     def __repr__(self):
         return 'NotBexp(%s)' % (self.exp)
+
+    def get_type(self, env=None):
+        return 'bool'
 
     def to_python(self, env, py_vars):
         code = 'not ' + self.exp.to_python(env, py_vars)
@@ -334,7 +428,47 @@ class AssignExp(Statement):
         return 'AssignExp(%s, =, %s)' % (self.name, self.value)
 
     def to_python(self, env, py_vars):
-        return self.name.to_python(env, py_vars) + ' = ' + self.value.to_python(env, py_vars) 
+        code = self.name.to_python(env, py_vars) + ' = '# + self.value.to_python(env, py_vars) 
+        l_type = get_id_return_type(self.name, env)
+        if isinstance(l_type, Id) or isinstance(l_type, Identifier):
+            code += self.value.to_python(env, py_vars)
+        else:
+            modifier = find_type_modifier(l_type.value, self.value, env)
+            if modifier:
+                code += modifier + '('
+                code += self.value.to_python(env, py_vars)
+                code += ')'
+            else:
+                code += self.value.to_python(env, py_vars)
+        return code
+
+
+default_value = {
+    'int' : 0,
+    'long' : 0,
+    'float': 0.0,
+    'double' : 0.0,
+    'char' : 0,
+    'bool' : False,
+}
+
+type_mapping = {
+    'float' : 'float',
+    'double' : 'float', 
+    'int' : 'int',
+    'char' : 'int',
+    'long' : 'int',
+    'bool': 'bool',
+}
+
+def find_type_modifier(type_name, rval, env):
+    r_type = rval.get_type(env)
+    if r_type == type_name:
+        return None
+    if type_name == 'char' and r_type in ['float', 'double', 'bool']:
+        return 'int'
+    return type_mapping[type_name]
+
 
 class Decl:
     def __init__(self, parameter, value):
@@ -354,9 +488,15 @@ class Decl:
             code += type_.to_python(env, py_vars) + '()'
         else:
             if self.value:
-                code += self.value.to_python(env, py_vars)
+                modifier = find_type_modifier(type_.value, self.value, env)
+                if modifier:
+                    code += modifier + '('
+                    code += self.value.to_python(env, py_vars)
+                    code += ')'
+                else:
+                    code += self.value.to_python(env, py_vars)
             else:
-                code += '0'
+                code += str(default_value[type_.value])
         return code
 
 class TypeSpec:
@@ -443,6 +583,10 @@ class FunCall:
 
     def __repr__(self):
         return 'FunCall(%s, %s)' % (self.name, self.args)
+
+    def get_type(self, env):
+        type_ = get_id_return_type(self.name, env)
+        return type_.value
 
     def to_python(self, env, py_vars):
         code = self.name.to_python(env, py_vars) + '(' 

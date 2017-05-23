@@ -17,7 +17,7 @@ if __name__ == '__main__':
     print()
 
     with open(filename, 'r') as f:
-        parser = Parser(f, True)
+        parser = Parser(f, semantic=True, pygen=True)
         try:
             parser.parseProgram()
         except SemanticError as e:

@@ -156,7 +156,7 @@ class pygenTest(unittest.TestCase):
         ast2.add_paranthesis()
         ast = BinopAexp(Identifier('a'), '*', ast2)
         self.pygen.create_aexp(ast, None)
-        expected = 'a * (2 / (2 - 1))\n'
+        expected = 'a * int(2 / (2 - 1))\n'
         self.assertEqual(self.pygen.code, expected)
 
     def test_create_bexp_condition(self):
@@ -198,7 +198,14 @@ class pygenTest(unittest.TestCase):
 
     def test_create_assignment(self):
         ast = AssignExp(Identifier('x'), Identifier('y'))
-        self.pygen.create_assignment(ast, None)
+        entity_var = VariableStruct(TypeSpec('int'), 'public')
+        entity = Entity(EntityType.Var, entity_var)
+        entity_var_2 = VariableStruct(TypeSpec('int'), 'public')
+        entity_2 = Entity(EntityType.Var, entity_var_2)
+        env = Env()
+        env.dict['x'] = entity
+        env.dict['y'] = entity_2
+        self.pygen.create_assignment(ast, env)
         expected = 'x = y\n'
         self.assertEqual(self.pygen.code, expected)
 
