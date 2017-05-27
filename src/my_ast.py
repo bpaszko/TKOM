@@ -461,13 +461,20 @@ type_mapping = {
     'bool': 'bool',
 }
 
-def find_type_modifier(type_name, rval, env):
+"""def find_type_modifier(type_name, rval, env):
     r_type = rval.get_type(env)
-    if r_type == type_name:
+    if r_type == type_name: #DOUBLE = INT !!!!!!!!!!!
         return None
     if type_name == 'char' and r_type in ['float', 'double', 'bool']:
         return 'int'
-    return type_mapping[type_name]
+    return type_mapping[type_name]"""
+
+def find_type_modifier(l_type, r_val, env):
+    r_type = r_val.get_type(env)
+    r_type = type_mapping[r_type]
+    l_type = type_mapping[l_type]
+    if l_type != r_type:
+        return l_type
 
 
 class Decl:
