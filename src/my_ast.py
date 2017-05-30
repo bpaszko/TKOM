@@ -433,7 +433,7 @@ class AssignExp(Statement):
         if isinstance(l_type, Id) or isinstance(l_type, Identifier):
             code += self.value.to_python(env, py_vars)
         else:
-            modifier = find_type_modifier(l_type.value, self.value, env)
+            modifier = find_type_modifier(l_type.value, self.value.get_type(env))
             if modifier:
                 code += modifier + '('
                 code += self.value.to_python(env, py_vars)
@@ -461,16 +461,16 @@ type_mapping = {
     'bool': 'bool',
 }
 
-"""def find_type_modifier(type_name, rval, env):
-    r_type = rval.get_type(env)
-    if r_type == type_name: #DOUBLE = INT !!!!!!!!!!!
-        return None
-    if type_name == 'char' and r_type in ['float', 'double', 'bool']:
-        return 'int'
-    return type_mapping[type_name]"""
 
-def find_type_modifier(l_type, r_val, env):
+
+"""def find_type_modifier(l_type, r_val, env):
     r_type = r_val.get_type(env)
+    r_type = type_mapping[r_type]
+    l_type = type_mapping[l_type]
+    if l_type != r_type:
+        return l_type"""
+
+def find_type_modifier(l_type, r_type):
     r_type = type_mapping[r_type]
     l_type = type_mapping[l_type]
     if l_type != r_type:
@@ -495,7 +495,7 @@ class Decl:
             code += type_.to_python(env, py_vars) + '()'
         else:
             if self.value:
-                modifier = find_type_modifier(type_.value, self.value, env)
+                modifier = find_type_modifier(type_.value, self.value.get_type(env))
                 if modifier:
                     code += modifier + '('
                     code += self.value.to_python(env, py_vars)
@@ -515,6 +515,9 @@ class TypeSpec:
 
     def __repr__(self):
         return 'TypeSpec(%s)' % (self.value)
+
+    def get_type(self, env=None):
+        return self.value
 
 class Param:
     def __init__(self, type, name):
@@ -595,22 +598,58 @@ class FunCall:
         type_ = get_id_return_type(self.name, env)
         return type_.value
 
+    """def to_python(self, env, py_vars):
+                    code = self.name.to_python(env, py_vars) + '(' 
+                    for i, arg in enumerate(self.args):
+                        #code += arg.to_python(env, py_vars)
+                        arg_code = arg.to_python(env,py_vars)
+                        if isinstance(arg, Identifier) or isinstance(arg, Id):
+                            if isinstance(get_id_return_type(arg, env), Identifier):
+                                arg_code = 'deepcopy(' + arg_code + ')'
+                        code += arg_code
+                        if i < len(self.args) - 1:
+                            code += ', '
+                    code += ')'
+                    return code"""
+
     def to_python(self, env, py_vars):
+        from src.semantic import Semantic
         code = self.name.to_python(env, py_vars) + '(' 
-        for i, arg in enumerate(self.args):
-            #code += arg.to_python(env, py_vars)
+        fun_entity = get_id_entity(self.name, env)
+        params = Semantic.get_function_parameters(fun_entity, check=False)
+        for i, (arg, param_entity) in enumerate(zip(self.args, params.values())):
+            arg_type = arg.get_type(env)
             arg_code = arg.to_python(env,py_vars)
+
             if isinstance(arg, Identifier) or isinstance(arg, Id):
+                #OBJECT
                 if isinstance(get_id_return_type(arg, env), Identifier):
-                    arg_code = 'deepcopy(' + arg_code + ')'
-            code += arg_code
+                    code += 'deepcopy(' + arg_code + ')'
+                #TYPESPEC
+                else:
+                    param_type = Semantic.get_entity_return_type(param_entity, check=False).value
+                    modifier = find_type_modifier(param_type, arg_type)
+                    if modifier:
+                        code += modifier + '(' + arg_code + ')'
+                    else:
+                        code += arg_code
+            #LITERAL
+            else:
+                param_type = Semantic.get_entity_return_type(param_entity, check=False).value
+                modifier = find_type_modifier(param_type, arg_type)
+                if modifier:
+                    code += modifier + '(' + arg_code + ')'
+                else:
+                    code += arg_code
+
             if i < len(self.args) - 1:
                 code += ', '
         code += ')'
         return code
 
 
-def get_id_return_type(id_, env):
+
+def get_id_entity(id_, env):
     from src.semantic import Semantic
     global_env = env
     while global_env.parent:
@@ -627,7 +666,12 @@ def get_id_return_type(id_, env):
             class_ = global_env.find_local(variable_class)
             class_env = class_.struct.env    
             variable_entity = class_env.find_local(variable_to_check.name)
-        return variable_entity.struct.type_
+        return variable_entity
     else:
         variable_entity = env.find(id_.name)
-        return variable_entity.struct.type_
+        return variable_entity
+
+
+def get_id_return_type(id_, env):
+    entity = get_id_entity(id_, env)
+    return entity.struct.type_

@@ -1,5 +1,7 @@
 #include <iostream>
 
+//THIS TEST EMPHASISES CODE INSIDE CLASSES
+
 class X {
 public:
 	int var = 3;

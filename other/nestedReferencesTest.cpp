@@ -1,5 +1,7 @@
 #include <iostream>
 
+//THIS TEST CHECKS NESTED OBJECTS 
+
 int l = 2;
 int y = 4;
 
@@ -45,6 +47,7 @@ int main(){
 	X x;
 	Y y;
 	Z z;
+	//passing object as argument should trigger deepcopy so it wont change the object
 	int zet = z.funZ(z.varZ);
 	int tmp = z.funZobj(z);
 	zet = zet + tmp + z.varZ;

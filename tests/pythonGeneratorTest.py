@@ -130,12 +130,34 @@ class pygenTest(unittest.TestCase):
         self.assertEqual(self.pygen.code, expected)
 
     def test_create_funcall(self): 
+        env_glob = Env()
+        env_fun = Env(env_glob)
+        entity_var_param1 = VariableStruct(Identifier('X'), 'public')
+        entity_var_param2 = VariableStruct(TypeSpec('int'), 'public')
+        entity_var_param3 = VariableStruct(TypeSpec('int'), 'public')
+        entity_var_param4 = VariableStruct(TypeSpec('char'), 'public')
+        entity_param1 = Entity(EntityType.Var, entity_var_param1)
+        entity_param2 = Entity(EntityType.Var, entity_var_param2)
+        entity_param3 = Entity(EntityType.Var, entity_var_param3)
+        entity_param4 = Entity(EntityType.Var, entity_var_param4)
+        env_fun.dict['p1'] = entity_param1
+        env_fun.dict['p2'] = entity_param2
+        env_fun.dict['p3'] = entity_param3
+        env_fun.dict['p4'] = entity_param4
+        env_glob.childs.append(env_fun)
+        params = [Param(Identifier('X'), Identifier('p1')), Param(TypeSpec('int'), Identifier('p2')), 
+            Param(TypeSpec('int'), Identifier('p3')), Param(TypeSpec('char'), Identifier('p4'))]
+        fundef = FunDef(TypeSpec('void'), Identifier('fun'), params, [])
+        fun_struct = FunctionStruct(TypeSpec('void'), env_fun, 'public')
+        entity_fun = Entity(EntityType.Fun, fun_struct)
+        env_glob.dict['fun'] = entity_fun
         ast = FunCall(Identifier('fun'), [Identifier('obj'), Identifier('x'), IntNum('2'), Character("'a'")])
         entity_var = VariableStruct(Identifier('X'), 'public')
         entity = Entity(EntityType.Var, entity_var)
         entity_var_2 = VariableStruct(TypeSpec('int'), 'public')
         entity_2 = Entity(EntityType.Var, entity_var_2)
-        env = Env()
+        env = Env(env_fun)
+        env_fun.childs.append(env)
         env.dict['obj'] = entity
         env.dict['x'] = entity_2
         self.pygen.create_funcall(ast, env)

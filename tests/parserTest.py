@@ -992,5 +992,344 @@ class TestParser(unittest.TestCase):
 
 		self.assertEqual(ast, result)
 
+
+
+
+
+
+
+
+
+	#TESTING SYNTAX ERRORS
+	def test_declaration_without_semicolon(self):
+		code = 'int x'
+		parser = createParser(code)
+		with self.assertRaises(SyntaxError):
+			parser.parseStmt()
+
+	def test_assignment_without_semicolon(self):
+		code = 'x = 2'
+		parser = createParser(code)
+		with self.assertRaises(SyntaxError):
+			parser.parseStmt()
+
+	def test_aexp_with_missing_operator(self):
+		code = 'x = 2 2;'
+		parser = createParser(code)
+		with self.assertRaises(SyntaxError):
+			parser.parseStmt()
+
+	def test_bexp_with_missing_operator(self):
+		code = 'x = false true;'
+		parser = createParser(code)
+		with self.assertRaises(SyntaxError):
+			parser.parseStmt()
+
+	def test_not_operand_on_left_side(self):
+		code = '!x = false;'
+		parser = createParser(code)
+		with self.assertRaises(SyntaxError):
+			parser.parseStmt()
+
+	def test_funcall_without_semicolon(self):
+		code = 'x = fun()'
+		parser = createParser(code)
+		with self.assertRaises(SyntaxError):
+			parser.parseStmt()
+
+	def test_funcall_without_open_paranthesis(self):
+		code = 'fun);'
+		parser = createParser(code)
+		with self.assertRaises(SyntaxError):
+			parser.parseStmt()
+
+	def test_funcall_without_close_paranthesis(self):
+		code = 'fun(;'
+		parser = createParser(code)
+		with self.assertRaises(SyntaxError):
+			parser.parseStmt()
+
+	def test_funcall_without_separating_args(self):
+		code = 'fun(a b);'
+		parser = createParser(code)
+		with self.assertRaises(SyntaxError):
+			parser.parseStmt()
+
+	def test_funcall_with_too_many_commas(self):
+		code = 'fun(a,,b);'
+		parser = createParser(code)
+		with self.assertRaises(SyntaxError):
+			parser.parseStmt()
+
+	def test_funcall_ending_with_comma(self):
+		code = 'fun(x,y,);'
+		parser = createParser(code)
+		with self.assertRaises(SyntaxError):
+			parser.parseStmt()
+
+	def test_funcall_with_only_comma(self):
+		code = 'fun(,);'
+		parser = createParser(code)
+		with self.assertRaises(SyntaxError):
+			parser.parseStmt()
+
+	def test_id_with_too_many_dots(self):
+		code = 'a..b'
+		parser = createParser(code)
+		with self.assertRaises(SyntaxError):
+			parser.parseStmt()
+
+	def test_id_ending_with_dot(self):
+		code = 'a.;'
+		parser = createParser(code)
+		with self.assertRaises(SyntaxError):
+			parser.parseStmt()
+
+	def test_while_without_condition(self):
+		code = 'while(){}'
+		parser = createParser(code)
+		with self.assertRaises(SyntaxError):
+			parser.parseStmt()
+
+	def test_while_without_open_paranthesis(self):
+		code = 'while x < 2){}'
+		parser = createParser(code)
+		with self.assertRaises(SyntaxError):
+			parser.parseStmt()
+
+	def test_while_without_close_paranthesis(self):
+		code = 'while (x < 2{}'
+		parser = createParser(code)
+		with self.assertRaises(SyntaxError):
+			parser.parseStmt()
+
+	def test_while_without_left_bracket(self):
+		code = 'while(x < 2)}'
+		parser = createParser(code)
+		with self.assertRaises(SyntaxError):
+			parser.parseStmt()
+
+	def test_while_without_right_bracket(self):
+		code = 'while(x < 2){'
+		parser = createParser(code)
+		with self.assertRaises(SyntaxError):
+			parser.parseStmt()
+
+	def test_for_without_open_paranthesis(self):
+		code = 'for int i = 0; i < 2; i = i + 1){}'
+		parser = createParser(code)
+		with self.assertRaises(SyntaxError):
+			parser.parseStmt()
+
+	def test_for_without_close_paranthesis(self):
+		code = 'for(int i = 0; i < 2; i = i + 1{}'
+		parser = createParser(code)
+		with self.assertRaises(SyntaxError):
+			parser.parseStmt()
+
+	def test_for_without_left_bracket(self):
+		code = 'for(int i = 0; i < 2; i = i + 1)'
+		parser = createParser(code)
+		with self.assertRaises(SyntaxError):
+			parser.parseStmt()
+
+	def test_for_without_right_bracket(self):
+		code = 'for(int i = 0; i < 2; i = i + 1){'
+		parser = createParser(code)
+		with self.assertRaises(SyntaxError):
+			parser.parseStmt()
+
+	def test_for_without_first_semicolon(self):
+		code = 'for(int i = 0 i < 2; i = i + 1){}'
+		parser = createParser(code)
+		with self.assertRaises(SyntaxError):
+			parser.parseStmt()
+
+	def test_for_without_second_semicolon(self):
+		code = 'for(int i = 0; i < 2 i = i + 1){}'
+		parser = createParser(code)
+		with self.assertRaises(SyntaxError):
+			parser.parseStmt()
+
+	def test_for_without_declaration(self):
+		code = 'for(i = 0; i < 2; i = i + 1){}'
+		parser = createParser(code)
+		with self.assertRaises(SyntaxError):
+			parser.parseStmt()
+
+	def test_if_without_condition(self):
+		code = 'if(){}'
+		parser = createParser(code)
+		with self.assertRaises(SyntaxError):
+			parser.parseStmt()
+
+	def test_if_without_open_paranthesis(self):
+		code = 'if x<2){}'
+		parser = createParser(code)
+		with self.assertRaises(SyntaxError):
+			parser.parseStmt()
+
+	def test_if_without_close_paranthesis(self):
+		code = 'if (x<2{}'
+		parser = createParser(code)
+		with self.assertRaises(SyntaxError):
+			parser.parseStmt()
+
+	def test_if_without_left_bracket(self):
+		code = 'if (x<2)'
+		parser = createParser(code)
+		with self.assertRaises(SyntaxError):
+			parser.parseStmt()
+
+	def test_if_without_right_bracket(self):
+		code = 'if (x<2){'
+		parser = createParser(code)
+		with self.assertRaises(SyntaxError):
+			parser.parseStmt()
+
+	def test_else_without_left_bracket(self):
+		code = 'if (x<2){} else}'
+		parser = createParser(code)
+		with self.assertRaises(SyntaxError):
+			parser.parseStmt()
+
+	def test_else_without_right_bracket(self):
+		code = 'if (x<2){} else{'
+		parser = createParser(code)
+		with self.assertRaises(SyntaxError):
+			parser.parseStmt()
+
+	def test_else_without_if(self):
+		code = 'else{}'
+		parser = createParser(code)
+		with self.assertRaises(SyntaxError):
+			parser.parseStmt()
+
+	def test_null_paranthesis_in_aexp(self):
+		code = '2 + () * 3;'
+		parser = createParser(code)
+		with self.assertRaises(SyntaxError):
+			parser.parseStmt()
+
+	def test_aexp_without_close_paranthesis(self):
+		code = '(2 + 3;'
+		parser = createParser(code)
+		with self.assertRaises(SyntaxError):
+			parser.parseStmt()
+
+	def test_aexp_without_open_paranthesis(self):
+		code = '2 + 3);'
+		parser = createParser(code)
+		with self.assertRaises(SyntaxError):
+			parser.parseStmt()
+
+	def test_keyword_in_aexp_continue(self):
+		code = 'continue + 2;'
+		parser = createParser(code)
+		with self.assertRaises(SyntaxError):
+			parser.parseStmt()
+
+	def test_keyword_in_aexp_while(self):
+		code = 'while + 2;'
+		parser = createParser(code)
+		with self.assertRaises(SyntaxError):
+			parser.parseStmt()
+
+	def test_keyword_in_aexp_class(self):
+		code = 'class + 2;'
+		parser = createParser(code)
+		with self.assertRaises(SyntaxError):
+			parser.parseStmt()
+
+	def test_keyword_in_aexp_int(self):
+		code = 'int + 2;'
+		parser = createParser(code)
+		with self.assertRaises(SyntaxError):
+			parser.parseStmt()
+
+	def test_class_spec_without_left_bracket(self):
+		code = 'class X};'
+		parser = createParser(code)
+		with self.assertRaises(SyntaxError):
+			parser.parseDefinition()
+
+	def test_class_spec_without_right_bracket(self):
+		code = 'class X{;'
+		parser = createParser(code)
+		with self.assertRaises(SyntaxError):
+			parser.parseDefinition()
+
+	def test_anonymous_class(self):
+		code = 'class {};'
+		parser = createParser(code)
+		with self.assertRaises(SyntaxError):
+			parser.parseDefinition()
+
+	def test_access_modifier_without_colon(self):
+		code = 'class{public};'
+		parser = createParser(code)
+		with self.assertRaises(SyntaxError):
+			parser.parseDefinition()
+
+	def test_access_modifier_in_declaration(self):
+		code = 'class{int public;};'
+		parser = createParser(code)
+		with self.assertRaises(SyntaxError):
+			parser.parseDefinition()
+
+	def test_fun_def_without_open_paranthesis(self):
+		code = 'int fun ){}'
+		parser = createParser(code)
+		with self.assertRaises(SyntaxError):
+			parser.parseDefinition()
+
+	def test_fun_def_without_close_paranthesis(self):
+		code = 'int fun({}'
+		parser = createParser(code)
+		with self.assertRaises(SyntaxError):
+			parser.parseDefinition()
+
+	def test_fun_def_without_left_bracket(self):
+		code = 'int fun()}'
+		parser = createParser(code)
+		with self.assertRaises(SyntaxError):
+			parser.parseDefinition()
+
+	def test_fun_def_without_right_bracket(self):
+		code = 'int fun(){'
+		parser = createParser(code)
+		with self.assertRaises(SyntaxError):
+			parser.parseDefinition()
+
+	def test_fun_def_without_commas_in_params(self):
+		code = 'int fun(int i double j){}'
+		parser = createParser(code)
+		with self.assertRaises(SyntaxError):
+			parser.parseDefinition()
+
+	def test_fun_def_without_type_spec_in_param(self):
+		code = 'int fun(a, b){}'
+		parser = createParser(code)
+		with self.assertRaises(SyntaxError):
+			parser.parseDefinition()
+
+	def test_fun_def_without_param_name(self):
+		code = 'int fun(int, double k){}'
+		parser = createParser(code)
+		with self.assertRaises(SyntaxError):
+			parser.parseDefinition()
+
+	def test_fun_def_with_too_many_commas(self):
+		code = 'int fun(int a,, int j){}'
+		parser = createParser(code)
+		with self.assertRaises(SyntaxError):
+			parser.parseDefinition()
+
+	def test_fun_def_with_comma_in_end(self):
+		code = 'int fun(int a, int j, ){}'
+		parser = createParser(code)
+		with self.assertRaises(SyntaxError):
+			parser.parseDefinition()
+
 if __name__ == '__main__':
 	unittest.main()

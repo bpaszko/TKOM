@@ -12,5 +12,5 @@ python tests/mainTest.py other/nestedReferencesTest.cpp;
 python tests/mainTest.py other/classesTest.cpp;
 python tests/mainTest.py other/generalTest.cpp;
 python tests/mainTest.py other/passTest.cpp;
-python tests/mainTest.py other/c.cpp;
-python tests/mainTest.py other/c2.cpp;
+python tests/mainTest.py other/callParameterTest.cpp;
+python tests/mainTest.py other/castAssignmentTest.cpp;
